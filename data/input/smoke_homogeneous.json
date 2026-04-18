@@ -1,0 +1,28 @@
+{
+  "case_id": "smoke_homogeneous",
+  "reference": {
+    "article_section": "prototype",
+    "article_figure": "sanity",
+    "target_mode": "E^y_11"
+  },
+  "materials": {
+    "n1": 1.0,
+    "n3": 1.47,
+    "n2m": 1.48
+  },
+  "geometry": {
+    "a": 2.0e-6,
+    "b": 1.0e-6,
+    "profile_type": "homogeneous"
+  },
+  "discretization": {
+    "Nx": 8,
+    "Ny": 4
+  },
+  "sweep": {
+    "v_start": 1.0,
+    "v_end": 3.0,
+    "v_step": 1.0
+  },
+  "notes": "Caso de sanidade sem pretensao de reproduzir diretamente uma figura do artigo. Serve para validar o encadeamento minimo do executavel."
+}

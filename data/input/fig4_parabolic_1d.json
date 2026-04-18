@@ -1,0 +1,28 @@
+{
+  "case_id": "fig4_parabolic_1d",
+  "reference": {
+    "article_section": "3.3.1",
+    "article_figure": "Fig. 4",
+    "target_mode": "E^x_11"
+  },
+  "materials": {
+    "n1": 1.0,
+    "n3": 1.47,
+    "n2m": 1.49
+  },
+  "geometry": {
+    "a": 2.22e-6,
+    "b": 1.11e-6,
+    "profile_type": "parabolic_1d"
+  },
+  "discretization": {
+    "Nx": 10,
+    "Ny": 5
+  },
+  "sweep": {
+    "v_start": 1.0,
+    "v_end": 5.0,
+    "v_step": 0.5
+  },
+  "notes": "Primeiro caso alinhado ao texto de 3.3.1. Ainda depende de implementacao posterior do nucleo integral exato."
+}

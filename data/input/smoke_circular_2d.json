@@ -1,0 +1,28 @@
+{
+  "case_id": "smoke_circular_2d",
+  "reference": {
+    "article_section": "prototype",
+    "article_figure": "sanity",
+    "target_mode": "E^x_11"
+  },
+  "materials": {
+    "n1": 1.0,
+    "n3": 1.47,
+    "n2m": 1.49
+  },
+  "geometry": {
+    "a": 2.22e-6,
+    "b": 1.11e-6,
+    "profile_type": "circular_2d"
+  },
+  "discretization": {
+    "Nx": 10,
+    "Ny": 5
+  },
+  "sweep": {
+    "v_start": 1.0,
+    "v_end": 3.0,
+    "v_step": 1.0
+  },
+  "notes": "Caso de sanidade para verificar leitura de entrada, malha e organizacao de saida do perfil circular."
+}
