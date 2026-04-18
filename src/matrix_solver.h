@@ -39,11 +39,12 @@ struct ModeSolution {
 };
 
 // Etapa atual:
-// - termo escalar (k^2 - k3^2) G;
-// - parte volumétrica regular de eps grad(1/eps) multiplicando grad'G;
-// - termo de fronteira isolado como soma explícita sobre segmentos da borda da malha;
-// - busca modal guiada principalmente por quase-nulidade do operador (modal_residual),
-//   mantendo |det(A)| como diagnóstico auxiliar, ainda não pela formulação vetorial completa do artigo.
+// - a Eq. (3) e a Eq. (4) são traduzidas em uma montagem vetorial explícita
+//   com funções-base step e teste por colocação;
+// - o operador separa termo escalar volumétrico, termo regular com grad'(1/eps)
+//   e termo distributivo de fronteira;
+// - beta é localizado priorizando |det(A)|, mantendo modal_residual apenas como
+//   diagnóstico secundário do vetor modal estimado.
 void build_matrix_A(ComplexMatrix& A, double beta, const Waveguide& wg);
 void build_matrix_A(ComplexMatrix& A, double beta, const Waveguide& wg, const AssemblyOptions& options);
 Complex calculate_determinant(const ComplexMatrix& A);
@@ -53,6 +54,15 @@ double calculate_modal_residual(double beta, const Waveguide& wg);
 double calculate_modal_residual(double beta, const Waveguide& wg, const AssemblyOptions& options);
 ModeSolution solve_mode_at_beta(double beta, const Waveguide& wg);
 ModeSolution solve_mode_at_beta(double beta, const Waveguide& wg, const AssemblyOptions& options);
+double refine_beta_with_determinant(double beta_initial,
+                                    double beta_min,
+                                    double beta_max,
+                                    const Waveguide& wg);
+double refine_beta_with_determinant(double beta_initial,
+                                    double beta_min,
+                                    double beta_max,
+                                    const Waveguide& wg,
+                                    const AssemblyOptions& options);
 double refine_beta_with_modal_residual(double beta_initial,
                                        double beta_min,
                                        double beta_max,

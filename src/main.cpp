@@ -48,7 +48,7 @@ void write_output_manifest(const SimulationCase& sim_case, const std::filesystem
 
     const std::string status = sim_case.study_kind == StudyKind::FIELD_MAP
                                    ? "field_reconstructed_from_mode_solution"
-                                   : "dispersion_csv_generated_with_modal_residual";
+                                   : "dispersion_csv_generated_with_det_search";
 
     manifest << "{\n";
     manifest << "  \"case_id\": \"" << sim_case.case_id << "\",\n";
@@ -287,12 +287,11 @@ int main(int argc, char* argv[]) {
         std::cout << "Iniciando simulação do caso '" << sim_case.case_id << "'..." << std::endl;
         std::cout << "Referência alvo: " << sim_case.article_figure
                   << " (" << sim_case.article_section << ")" << std::endl;
-        std::cout << "Aviso: a busca modal usa um operador protótipo com o termo escalar"
-                  << " (k^2-k3^2)G, a parte volumétrica regular com grad'G e um termo de fronteira"
-                  << " por segmentos explícitos; beta agora é escolhido prioritariamente por"
-                  << " modal_residual, mantendo |det(A)| como diagnóstico, e o campo modal"
-                  << " continua estimado por menor singularidade, mas a formulação vetorial"
-                  << " completa do artigo ainda não está fechada."
+        std::cout << "Aviso: a montagem atual traduz explicitamente a Eq. (3) e a Eq. (4)"
+                  << " com base step e colocação, separando o termo escalar (k^2-k3^2)G,"
+                  << " o termo regular com grad'G e a contribuição distributiva de fronteira;"
+                  << " beta é localizado por |det(A)| e o residual modal permanece apenas"
+                  << " como diagnóstico do vetor modal estimado."
                   << std::endl;
         std::cout << "Quadratura de fronteira: "
                   << boundary_quadrature_model_to_cstr(sim_case.assembly_options.boundary_quadrature_model)
@@ -319,7 +318,7 @@ int main(int argc, char* argv[]) {
                               ? sim_case.field_map.beta_over_k0 * k0
                               : find_beta_root(wg, beta_min, beta_max, sim_case.assembly_options);
             if (sim_case.field_map.beta_over_k0 <= 0.0) {
-                beta = refine_beta_with_modal_residual(beta, beta_min, beta_max, wg, sim_case.assembly_options);
+                beta = refine_beta_with_determinant(beta, beta_min, beta_max, wg, sim_case.assembly_options);
             }
             const ModeSolution mode_solution = solve_mode_at_beta(beta, wg, sim_case.assembly_options);
             write_mode_coefficients(wg, mode_solution.coefficients, output_path);
@@ -360,7 +359,7 @@ int main(int argc, char* argv[]) {
                 const double beta_max = k0 * params.n2m;
                 double beta_found = find_beta_root(wg, beta_min, beta_max, sim_case.assembly_options);
                 beta_found =
-                    refine_beta_with_modal_residual(beta_found, beta_min, beta_max, wg, sim_case.assembly_options);
+                    refine_beta_with_determinant(beta_found, beta_min, beta_max, wg, sim_case.assembly_options);
                 const ModeSolution mode_solution = solve_mode_at_beta(beta_found, wg, sim_case.assembly_options);
 
                 const double beta_over_k0 = beta_found / k0;

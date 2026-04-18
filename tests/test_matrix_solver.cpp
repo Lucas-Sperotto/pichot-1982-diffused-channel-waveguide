@@ -48,6 +48,23 @@ Waveguide make_small_parabolic_waveguide() {
     return Waveguide(params, discretization);
 }
 
+Waveguide make_fig2_reference_waveguide() {
+    WaveguideParams params;
+    params.n1 = 1.01;
+    params.n3 = 1.01;
+    params.n2m = 1.05;
+    params.a = 2.22e-6;
+    params.b = 1.11e-6;
+    params.lambda0 = 1.0e-6;
+    params.profile_type = ProfileType::HOMOGENEOUS;
+
+    Discretization discretization;
+    discretization.Nx = 4;
+    discretization.Ny = 2;
+
+    return Waveguide(params, discretization);
+}
+
 void test_homogeneous_blocks_remain_decoupled() {
     const Waveguide wg = make_small_homogeneous_waveguide();
     const double beta = 0.5 * wg.get_k0() * (wg.get_params().n2m + wg.get_params().n3);
@@ -258,25 +275,32 @@ void test_boundary_quadrature_models_are_distinct() {
             "Modelos distintos de quadratura de fronteira deveriam produzir matrizes distintas.");
 }
 
-void test_beta_search_reduces_modal_residual() {
-    const Waveguide wg = make_small_homogeneous_waveguide();
+void test_beta_search_reduces_determinant_magnitude_for_fig2_reference() {
+    const Waveguide wg = make_fig2_reference_waveguide();
     const double beta_min = wg.get_k0() * wg.get_params().n3;
     const double beta_max = wg.get_k0() * wg.get_params().n2m;
 
     const double beta_candidate = find_beta_root(wg, beta_min, beta_max);
+    const double beta_refined = refine_beta_with_determinant(beta_candidate, beta_min, beta_max, wg);
     const ModeSolution solution_candidate = solve_mode_at_beta(beta_candidate, wg);
+    const ModeSolution solution_refined = solve_mode_at_beta(beta_refined, wg);
     const ModeSolution solution_left = solve_mode_at_beta(beta_min + 1e-6 * wg.get_k0(), wg);
     const ModeSolution solution_right = solve_mode_at_beta(beta_max - 1e-6 * wg.get_k0(), wg);
 
     require(beta_candidate > beta_min, "beta candidato deveria ficar dentro do intervalo guiado.");
     require(beta_candidate < beta_max, "beta candidato deveria ficar dentro do intervalo guiado.");
-    require(std::isfinite(solution_candidate.modal_residual), "O residual modal deveria ser finito.");
+    require(beta_refined > beta_min, "beta refinado deveria ficar dentro do intervalo guiado.");
+    require(beta_refined < beta_max, "beta refinado deveria ficar dentro do intervalo guiado.");
     require(std::isfinite(solution_candidate.determinant_magnitude),
-            "O determinante deve continuar disponível como diagnóstico.");
-    require(solution_candidate.modal_residual <= solution_left.modal_residual,
-            "A busca modal deveria melhorar ou igualar o residual modal do extremo esquerdo.");
-    require(solution_candidate.modal_residual <= solution_right.modal_residual,
-            "A busca modal deveria melhorar ou igualar o residual modal do extremo direito.");
+            "O determinante deve continuar disponível para guiar a busca modal.");
+    require(std::isfinite(solution_refined.determinant_magnitude),
+            "O refinamento por determinante deveria manter |det(A)| finito.");
+    require(solution_candidate.determinant_magnitude <= solution_left.determinant_magnitude,
+            "A busca modal deveria melhorar ou igualar |det(A)| no extremo esquerdo.");
+    require(solution_candidate.determinant_magnitude <= solution_right.determinant_magnitude,
+            "A busca modal deveria melhorar ou igualar |det(A)| no extremo direito.");
+    require(solution_refined.determinant_magnitude <= solution_candidate.determinant_magnitude,
+            "O refinamento local deveria manter ou reduzir |det(A)| do candidato inicial.");
 }
 
 void test_mode_solution_returns_finite_coefficients_and_residual() {
@@ -285,7 +309,7 @@ void test_mode_solution_returns_finite_coefficients_and_residual() {
     const double beta_max = wg.get_k0() * wg.get_params().n2m;
 
     double beta_candidate = find_beta_root(wg, beta_min, beta_max);
-    beta_candidate = refine_beta_with_modal_residual(beta_candidate, beta_min, beta_max, wg);
+    beta_candidate = refine_beta_with_determinant(beta_candidate, beta_min, beta_max, wg);
     const ModeSolution solution = solve_mode_at_beta(beta_candidate, wg);
 
     require(solution.beta > beta_min && solution.beta < beta_max,
@@ -315,8 +339,8 @@ int main() {
     test_boundary_distribution_changes_homogeneous_operator();
     test_full_operator_matches_sum_of_explicit_blocks();
     test_boundary_quadrature_models_are_distinct();
-    test_beta_search_reduces_modal_residual();
+    test_beta_search_reduces_determinant_magnitude_for_fig2_reference();
     test_mode_solution_returns_finite_coefficients_and_residual();
-    std::cout << "Matrix solver prototype checks passed." << std::endl;
+    std::cout << "Matrix solver checks passed." << std::endl;
     return 0;
 }

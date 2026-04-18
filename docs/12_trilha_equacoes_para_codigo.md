@@ -194,7 +194,7 @@ A parte regular da Eq. (4) entra via `get_regular_epsilon_grad_inverse`. No prot
 
 - o gradiente regular é avaliado no centro da célula-fonte;
 - ele acopla $E_x$ e $E_y$ aos termos com $\partial_{x'}G$ e $\partial_{y'}G$;
-- essa contribuição já é vetorial, mas ainda representa uma tradução operacional simplificada da formulação integral do artigo.
+- essa contribuição agora é montada explicitamente como tradução vetorial da Eq. (3): para a componente observada $\alpha \in \{x,y\}$ usa-se $\partial_{\alpha'}G$, enquanto a componente-fonte entra via o escalar $q \cdot \mathbf{E}$, com $q = \varepsilon \,\mathrm{grad}(1/\varepsilon)$ avaliado na célula-fonte.
 
 O método numérico adotado aqui também é peça-por-peça constante por célula-fonte, usando derivadas do kernel avaliadas operacionalmente entre células.
 
@@ -229,18 +229,31 @@ Na implementação mais recente do protótipo, essa etapa já foi melhorada:
 
 Esse tratamento ainda é uma regularização operacional, não a avaliação singular final do artigo, mas já é mais coerente com a interpretação de média sobre célula do que a antiga amostragem em quatro pontos.
 
+### 12.5.5. Nota editorial da Fase 3A
+
+A Fase 3A fecha a tradução operacional da Eq. (3) e da Eq. (4) no seguinte sentido auditável:
+
+- as funções-base continuam sendo do tipo step, uma para $E_x$ e outra para $E_y$ em cada célula;
+- o teste continua sendo por colocação no centro da célula de observação;
+- o termo escalar usa a média operacional de $G$ na célula-fonte;
+- o termo regular usa a direção observada de $\mathrm{grad}'\,G$ e a componente-fonte de $q = \varepsilon \,\mathrm{grad}(1/\varepsilon)$;
+- o termo singular de fronteira usa a mesma estrutura vetorial, substituindo $q$ pelo coeficiente de salto distribuído sobre cada segmento da borda;
+- a auto-interação continua regularizada por média de célula.
+
+As ambiguidades que permanecem abertas, e portanto não devem ser "corrigidas" por palpite, são:
+
+- o tratamento singular final exato ao nível de célula para $G_S$;
+- a forma exata do funcional de teste implícito no artigo além da colocação operacional hoje adotada;
+- a extensão da implementação para além do regime hoje usado, com $y \ge 0$ e $y' \ge 0$.
+
 ## 12.6. Critério computacional para encontrar $\beta$
 
 O artigo afirma que os modos correspondem aos zeros de $\det(A)$.
 
-O protótipo atual implementa isso em duas etapas operacionais:
+Na implementação da Fase 3A, isso é traduzido em duas etapas operacionais:
 
-1. `find_beta_root` procura um candidato a $\beta$ priorizando a quase-nulidade do operador, medida por `modal_residual`, em uma sequência de grades refinadas dentro do intervalo guiado;
-2. `refine_beta_with_modal_residual` reavalia uma vizinhança do candidato com o mesmo critério, mantendo $|\det(A)|$ como diagnóstico auxiliar.
-
-$$
-\frac{\|AX\|}{\|X\|}.
-$$
+1. `find_beta_root` faz uma varredura em grade no intervalo guiado e localiza candidatos que minimizam $|\det(A)|$;
+2. `refine_beta_with_determinant` refina localmente o melhor candidato por uma minimização unidimensional de $|\det(A)|$.
 
 O intervalo de busca hoje é tomado como
 
@@ -248,12 +261,15 @@ $$
 k_0 n_3 \le \beta \le k_0 \bar{n}_2.
 $$
 
-Na prática, isso significa que o código atual ainda não executa um localizador rigoroso de zeros exatos de $\det(A)$. Ele usa:
+Na prática, isso significa que o código atual já usa $\det(A)$ como critério principal de seleção modal. Ao mesmo tempo, ele ainda não deve ser lido como um resolvedor analítico exato dos zeros de $\det(A)$, porque o próprio operador continua dependente das aproximações numéricas já registradas nesta trilha.
 
-- uma busca inicial guiada por quase-nulidade do operador;
-- $|\det(A)|$ como número auxiliar para comparar amostras e inspecionar diagnósticos.
+O residual modal
 
-Esse compromisso já é suficiente para os testes de fumaça e para gerar curvas exploratórias, mas permanece uma pendência central da Fase 2.
+$$
+\frac{\|AX\|}{\|X\|}
+$$
+
+continua sendo calculado e salvo, mas apenas como diagnóstico secundário do vetor modal estimado para o $\beta$ já escolhido por $|\det(A)|$.
 
 ## 12.7. Como o vetor modal é estimado
 
@@ -269,7 +285,7 @@ Esse vetor é usado como estimativa do modo discreto e armazenado em `ModeSoluti
 
 Portanto, a regra operacional do repositório hoje é:
 
-- $\beta$ é estimado pela quase-anulação de `A`;
+- $\beta$ é estimado por minimização de $|\det(A)|$ no intervalo guiado;
 - $X$ é estimado pelo vetor quase-nulo correspondente.
 
 ## 12.8. Curvas de dispersão e mapas de campo
@@ -291,6 +307,14 @@ $$
 - procura-se $\beta$;
 - calcula-se `normalized_beta`, `det_abs` e `modal_residual`;
 - grava-se `dispersion_curve.csv`.
+
+Para a Figura 2, a Fase 3A acrescenta ainda uma etapa de pós-processamento reproduzível:
+
+- carrega-se `data/reference/fig_02_integral_equation_digitized.csv`;
+- interpola-se a referência digitizada na abcissa da simulação;
+- grava-se `fig_02_integral_equation_comparison.csv`;
+- grava-se `fig_02_integral_equation_metrics.json`;
+- gera-se `fig_02_integral_equation_overlay.png`.
 
 Como as funções-base são do tipo step, o aumento de `Nx` e `Ny` é a forma direta de refinar a aproximação espacial. A conferência de que essa conversão de abcissa coincide exatamente com cada figura do artigo permanece parte da validação científica posterior.
 
@@ -317,7 +341,7 @@ Como a base é step, a reconstrução espacial atual é peça-por-peça constant
 | Eq. (4) parte singular | salto de $1/\varepsilon$ em $\mathcal{R}$ | `boundary_segments` + integração de fronteira |
 | Eq. (5), Eq. (6), Eq. (7) | função de Green do meio estratificado | `src/green_function.cpp` |
 | Eq. (8) | sistema homogêneo do método dos momentos | `ComplexMatrix`, `build_matrix_A`, `ModeSolution` |
-| zeros de $\det(A)$ | critério modal em $\beta$ | `find_beta_root` e `refine_beta_with_modal_residual` |
+| zeros de $\det(A)$ | critério modal em $\beta$ | `find_beta_root` e `refine_beta_with_determinant` |
 | reconstrução de campo | obtenção de $\mathbf{E}(x,y)$ a partir de $X$ | `write_mode_coefficients` e `write_field_map_grid` |
 
 ## 12.10. O que ainda falta para fechar a Fase 2
@@ -327,8 +351,7 @@ Os próximos fechamentos desejáveis já ficaram claros a partir desta trilha:
 - confirmar, no nível do artigo, se a etapa de teste é melhor descrita como colocação direta nos centros ou se há outro funcional de teste implícito;
 - substituir a regularização local por quadratura de célula por um tratamento singular mais rigoroso;
 - reduzir o custo da quadratura oscilatória de `G_NS` sem perder consistência com o cálculo direto atual das derivadas;
-- revisar se a tradução vetorial dos blocos cruzados `A_xy` e `A_yx` coincide integralmente com a formulação do artigo;
-- trocar a busca hoje guiada por `modal_residual` por um critério modal mais rigoroso;
+- estender a validação quantitativa iniciada na Figura 2 para as Figuras 3, 4 e 6, com referências digitizadas adicionais;
 - documentar, figura por figura, a convergência em malha exigida para chamar a reprodução de quantitativamente fechada.
 
 Em outras palavras, a Fase 2 já pode ser trabalhada com base auditável: a sequência algorítmica principal está exposta. O que falta agora não é mais descobrir "como o código anda", mas melhorar a fidelidade matemática de cada etapa.

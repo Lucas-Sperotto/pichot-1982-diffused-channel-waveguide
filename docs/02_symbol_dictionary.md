@@ -62,8 +62,8 @@ Quando a implementação usa um nome operacional diferente da notação matemát
 | --- | --- | --- |
 | $N_x$, $N_y$ | número de células/pontos por direção | chaves `discretization.Nx` e `discretization.Ny` |
 | $A$ | matriz do sistema do método dos momentos | operador discretizado |
-| $\det(A)$ | determinante do sistema discretizado | residual espectral usado na busca modal atual |
-| `modal_residual` | residual do vetor quase-nulo | métrica adicional de seleção modal |
+| $\det(A)$ | determinante do sistema discretizado | critério modal principal na busca atual |
+| `modal_residual` | residual do vetor quase-nulo | métrica diagnóstica adicional após a escolha de $\beta$ |
 | `profile_type` | tipo de perfil material | `homogeneous`, `parabolic_1d`, `circular_2d` |
 | `study.kind` | tipo de estudo | `dispersion_curve` ou `field_map` |
 | `beta_over_k0` | $\beta/k_0$ | coluna de saída e parâmetro do mapa de campo |

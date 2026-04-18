@@ -101,6 +101,15 @@ As marcações visuais observadas na figura são compatíveis com uma malha hori
 
 Este caso será resolvido como uma curva de dispersão: o solver percorre a abcissa normalizada do artigo, converte cada valor em $\lambda_0$, monta o operador discretizado para `profile_type = "homogeneous"` e registra, para cada ponto, $\beta/k_0$, a ordenada normalizada, `det_abs` e `modal_residual`. A comparação quantitativa com Goell, FEM, effective index e Marcatili pertence à etapa de validação posterior.
 
+Nota editorial da Fase 3A:
+
+- a validação reproduzível inicial da Figura 2 passa a usar somente a curva "integral equation" do próprio artigo como referência digitizada;
+- essa referência fica registrada em `data/reference/fig_02_integral_equation_digitized.csv`;
+- o fluxo padrão de `scripts/run_case.sh` agora gera também:
+  - `fig_02_integral_equation_comparison.csv`;
+  - `fig_02_integral_equation_metrics.json`;
+  - `fig_02_integral_equation_overlay.png`.
+
 ## 3.2. Guia de canal homogêneo
 
 Mostra-se na Fig. 3 a comparação entre nossos resultados e aqueles obtidos por Yeh, Marcatili e pelo método do índice efetivo para o guia de canal homogêneo no modo $E^{y}_{11}$. Observa-se boa concordância entre a equação integral vetorial e os resultados de Yeh.

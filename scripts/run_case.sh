@@ -4,6 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 EXECUTABLE="${ROOT_DIR}/bin/waveguide_solver"
+POSTPROCESS_SCRIPT="${ROOT_DIR}/scripts/postprocess_case.py"
 
 if [[ $# -lt 1 ]]; then
     echo "Uso: $0 <arquivo_de_caso.json> [diretorio_saida]" >&2
@@ -54,5 +55,6 @@ fi
 
 mkdir -p "${OUTPUT_DIR}"
 "${EXECUTABLE}" "${CASE_FILE}" "${OUTPUT_DIR}"
+python3 "${POSTPROCESS_SCRIPT}" --case-file "${CASE_FILE}" --output-dir "${OUTPUT_DIR}"
 
 echo "Saídas disponíveis em: ${OUTPUT_DIR}"

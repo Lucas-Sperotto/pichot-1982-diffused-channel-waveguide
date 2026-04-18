@@ -14,10 +14,18 @@ constexpr int kInitialSearchSamples = 7;
 constexpr int kRefinementSamples = 5;
 constexpr int kRefinementIterations = 4;
 constexpr int kInverseIterations = 6;
-constexpr int kModalRefinementSamples = 3;
+constexpr int kDeterminantGoldenSectionIterations = 12;
+constexpr double kGoldenSectionRatio = 0.6180339887498949;
 
 constexpr double kGaussPoint = 0.5773502691896257;
 constexpr std::size_t kSelfCellGaussSubdivisionsPerAxis = 4;
+
+enum class FieldComponent {
+    EX,
+    EY
+};
+
+constexpr FieldComponent kFieldComponents[] = {FieldComponent::EX, FieldComponent::EY};
 
 double get_background_k_squared(const Waveguide& wg) {
     const double k0 = wg.get_k0();
@@ -41,6 +49,29 @@ struct MatrixBlockContribution {
     Complex yx{0.0, 0.0};
     Complex yy{0.0, 0.0};
 };
+
+Complex* select_block(MatrixBlockContribution* contribution,
+                      FieldComponent observation_component,
+                      FieldComponent source_component) {
+    if (observation_component == FieldComponent::EX && source_component == FieldComponent::EX) {
+        return &contribution->xx;
+    }
+    if (observation_component == FieldComponent::EX && source_component == FieldComponent::EY) {
+        return &contribution->xy;
+    }
+    if (observation_component == FieldComponent::EY && source_component == FieldComponent::EX) {
+        return &contribution->yx;
+    }
+    return &contribution->yy;
+}
+
+Complex directional_derivative_average(const KernelAverages& kernels, FieldComponent observation_component) {
+    return observation_component == FieldComponent::EX ? kernels.dG_dx_average : kernels.dG_dy_average;
+}
+
+double source_component_value(const Vector2& vector, FieldComponent source_component) {
+    return source_component == FieldComponent::EX ? vector.x : vector.y;
+}
 
 void accumulate_block(MatrixBlockContribution* total, const MatrixBlockContribution& increment) {
     total->xx += increment.xx;
@@ -136,8 +167,9 @@ KernelAverages evaluate_kernel_averages_between_cells(const Cell& observation,
 MatrixBlockContribution make_identity_contribution(bool is_diagonal) {
     MatrixBlockContribution contribution;
     if (is_diagonal) {
-        contribution.xx = Complex(1.0, 0.0);
-        contribution.yy = Complex(1.0, 0.0);
+        for (FieldComponent component : kFieldComponents) {
+            *select_block(&contribution, component, component) = Complex(1.0, 0.0);
+        }
     }
     return contribution;
 }
@@ -151,8 +183,9 @@ MatrixBlockContribution make_scalar_contrast_contribution(const Cell& source,
     const Complex scalar_kernel = contrast_k_squared * source_area * kernels.green_average;
 
     MatrixBlockContribution contribution;
-    contribution.xx = -scalar_kernel;
-    contribution.yy = -scalar_kernel;
+    for (FieldComponent component : kFieldComponents) {
+        *select_block(&contribution, component, component) = -scalar_kernel;
+    }
     return contribution;
 }
 
@@ -163,10 +196,16 @@ MatrixBlockContribution make_regular_gradient_contribution(const Cell& source,
     const Vector2 epsilon_grad_inverse = wg.get_regular_epsilon_grad_inverse(source.cx, source.cy);
 
     MatrixBlockContribution contribution;
-    contribution.xx = -source_area * epsilon_grad_inverse.x * kernels.dG_dx_average;
-    contribution.xy = -source_area * epsilon_grad_inverse.y * kernels.dG_dx_average;
-    contribution.yx = -source_area * epsilon_grad_inverse.x * kernels.dG_dy_average;
-    contribution.yy = -source_area * epsilon_grad_inverse.y * kernels.dG_dy_average;
+    // Tradução explícita da Eq. (3): para cada componente observada E_alpha,
+    // o operador usa ∂_{alpha'}G multiplicado pelo escalar q · E, com
+    // q = eps grad(1/eps) avaliado na célula-fonte.
+    for (FieldComponent observation_component : kFieldComponents) {
+        const Complex derivative_average = directional_derivative_average(kernels, observation_component);
+        for (FieldComponent source_component : kFieldComponents) {
+            *select_block(&contribution, observation_component, source_component) =
+                -source_area * source_component_value(epsilon_grad_inverse, source_component) * derivative_average;
+        }
+    }
     return contribution;
 }
 
@@ -212,10 +251,17 @@ MatrixBlockContribution make_boundary_segment_contribution(const Cell& observati
         segment.epsilon_jump_factor * segment.outward_normal.y};
 
     MatrixBlockContribution contribution;
-    contribution.xx = -boundary_coefficient.x * integrated_dG_dx_boundary;
-    contribution.xy = -boundary_coefficient.y * integrated_dG_dx_boundary;
-    contribution.yx = -boundary_coefficient.x * integrated_dG_dy_boundary;
-    contribution.yy = -boundary_coefficient.y * integrated_dG_dy_boundary;
+    const KernelAverages boundary_kernels{
+        Complex(0.0, 0.0),
+        integrated_dG_dx_boundary,
+        integrated_dG_dy_boundary};
+    for (FieldComponent observation_component : kFieldComponents) {
+        const Complex derivative_average = directional_derivative_average(boundary_kernels, observation_component);
+        for (FieldComponent source_component : kFieldComponents) {
+            *select_block(&contribution, observation_component, source_component) =
+                -source_component_value(boundary_coefficient, source_component) * derivative_average;
+        }
+    }
     return contribution;
 }
 
@@ -245,30 +291,18 @@ SearchSample evaluate_sample(double beta, const Waveguide& wg, const AssemblyOpt
     sample.beta = beta;
 
     try {
-        const ModeSolution solution = solve_mode_at_beta(beta, wg, options);
-        if (std::isfinite(solution.determinant_magnitude)) {
-            sample.determinant_magnitude = solution.determinant_magnitude;
-        }
-        if (std::isfinite(solution.modal_residual)) {
-            sample.modal_residual = solution.modal_residual;
+        const double determinant_magnitude = calculate_determinant_magnitude(beta, wg, options);
+        if (std::isfinite(determinant_magnitude)) {
+            sample.determinant_magnitude = determinant_magnitude;
         }
     } catch (const std::exception&) {
-        // Mantém infinito nos dois diagnósticos para marcar que a amostra falhou.
+        // Mantém infinito no diagnóstico principal para marcar que a amostra falhou.
     }
 
     return sample;
 }
 
 bool is_better_search_sample(const SearchSample& lhs, const SearchSample& rhs) {
-    const bool lhs_modal_finite = std::isfinite(lhs.modal_residual);
-    const bool rhs_modal_finite = std::isfinite(rhs.modal_residual);
-    if (lhs_modal_finite != rhs_modal_finite) {
-        return lhs_modal_finite;
-    }
-    if (lhs.modal_residual != rhs.modal_residual) {
-        return lhs.modal_residual < rhs.modal_residual;
-    }
-
     const bool lhs_det_finite = std::isfinite(lhs.determinant_magnitude);
     const bool rhs_det_finite = std::isfinite(rhs.determinant_magnitude);
     if (lhs_det_finite != rhs_det_finite) {
@@ -276,6 +310,15 @@ bool is_better_search_sample(const SearchSample& lhs, const SearchSample& rhs) {
     }
     if (lhs.determinant_magnitude != rhs.determinant_magnitude) {
         return lhs.determinant_magnitude < rhs.determinant_magnitude;
+    }
+
+    const bool lhs_modal_finite = std::isfinite(lhs.modal_residual);
+    const bool rhs_modal_finite = std::isfinite(rhs.modal_residual);
+    if (lhs_modal_finite != rhs_modal_finite) {
+        return lhs_modal_finite;
+    }
+    if (lhs.modal_residual != rhs.modal_residual) {
+        return lhs.modal_residual < rhs.modal_residual;
     }
 
     return lhs.beta < rhs.beta;
@@ -457,6 +500,65 @@ SearchSample best_sample_in_grid(double left,
     return best;
 }
 
+SearchSample refine_sample_with_determinant(double beta_initial,
+                                            double beta_min,
+                                            double beta_max,
+                                            const Waveguide& wg,
+                                            const AssemblyOptions& options) {
+    const double interval = beta_max - beta_min;
+    const double margin = std::max(get_beta_margin(wg, beta_min, beta_max), 0.05 * interval);
+    double left = std::max(beta_min + kPivotTolerance, beta_initial - margin);
+    double right = std::min(beta_max - kPivotTolerance, beta_initial + margin);
+    if (!(left < right)) {
+        return evaluate_sample(beta_initial, wg, options);
+    }
+
+    SearchSample best_sample = evaluate_sample(beta_initial, wg, options);
+    SearchSample left_sample = evaluate_sample(left, wg, options);
+    SearchSample right_sample = evaluate_sample(right, wg, options);
+    if (is_better_search_sample(left_sample, best_sample)) {
+        best_sample = left_sample;
+    }
+    if (is_better_search_sample(right_sample, best_sample)) {
+        best_sample = right_sample;
+    }
+
+    double x1 = right - kGoldenSectionRatio * (right - left);
+    double x2 = left + kGoldenSectionRatio * (right - left);
+    SearchSample sample1 = evaluate_sample(x1, wg, options);
+    SearchSample sample2 = evaluate_sample(x2, wg, options);
+    if (is_better_search_sample(sample1, best_sample)) {
+        best_sample = sample1;
+    }
+    if (is_better_search_sample(sample2, best_sample)) {
+        best_sample = sample2;
+    }
+
+    for (int iteration = 0; iteration < kDeterminantGoldenSectionIterations; ++iteration) {
+        if (is_better_search_sample(sample1, sample2)) {
+            right = x2;
+            x2 = x1;
+            sample2 = sample1;
+            x1 = right - kGoldenSectionRatio * (right - left);
+            sample1 = evaluate_sample(x1, wg, options);
+            if (is_better_search_sample(sample1, best_sample)) {
+                best_sample = sample1;
+            }
+        } else {
+            left = x1;
+            x1 = x2;
+            sample1 = sample2;
+            x2 = left + kGoldenSectionRatio * (right - left);
+            sample2 = evaluate_sample(x2, wg, options);
+            if (is_better_search_sample(sample2, best_sample)) {
+                best_sample = sample2;
+            }
+        }
+    }
+
+    return best_sample;
+}
+
 } // namespace
 
 const char* boundary_quadrature_model_to_cstr(BoundaryQuadratureModel model) {
@@ -632,11 +734,26 @@ double calculate_modal_residual(double beta, const Waveguide& wg, const Assembly
     }
 }
 
+double refine_beta_with_determinant(double beta_initial,
+                                    double beta_min,
+                                    double beta_max,
+                                    const Waveguide& wg) {
+    return refine_beta_with_determinant(beta_initial, beta_min, beta_max, wg, AssemblyOptions{});
+}
+
+double refine_beta_with_determinant(double beta_initial,
+                                    double beta_min,
+                                    double beta_max,
+                                    const Waveguide& wg,
+                                    const AssemblyOptions& options) {
+    return refine_sample_with_determinant(beta_initial, beta_min, beta_max, wg, options).beta;
+}
+
 double refine_beta_with_modal_residual(double beta_initial,
                                        double beta_min,
                                        double beta_max,
                                        const Waveguide& wg) {
-    return refine_beta_with_modal_residual(beta_initial, beta_min, beta_max, wg, AssemblyOptions{});
+    return refine_beta_with_determinant(beta_initial, beta_min, beta_max, wg);
 }
 
 double refine_beta_with_modal_residual(double beta_initial,
@@ -644,26 +761,7 @@ double refine_beta_with_modal_residual(double beta_initial,
                                        double beta_max,
                                        const Waveguide& wg,
                                        const AssemblyOptions& options) {
-    const double interval = beta_max - beta_min;
-    const double margin = std::max(get_beta_margin(wg, beta_min, beta_max), 0.01 * interval);
-    const double left = std::max(beta_min + kPivotTolerance, beta_initial - margin);
-    const double right = std::min(beta_max - kPivotTolerance, beta_initial + margin);
-    if (!(left < right)) {
-        return beta_initial;
-    }
-
-    SearchSample best_sample = evaluate_sample(beta_initial, wg, options);
-    for (int index = 0; index < kModalRefinementSamples; ++index) {
-        const double alpha = kModalRefinementSamples == 1
-                                 ? 0.0
-                                 : static_cast<double>(index) / (kModalRefinementSamples - 1);
-        const double beta = left + alpha * (right - left);
-        const SearchSample candidate = evaluate_sample(beta, wg, options);
-        if (is_better_search_sample(candidate, best_sample)) {
-            best_sample = candidate;
-        }
-    }
-    return best_sample.beta;
+    return refine_beta_with_determinant(beta_initial, beta_min, beta_max, wg, options);
 }
 
 double find_beta_root(const Waveguide& wg, double beta_min, double beta_max) {
@@ -702,5 +800,5 @@ double find_beta_root(const Waveguide& wg,
         }
     }
 
-    return best.beta;
+    return refine_sample_with_determinant(best.beta, beta_min, beta_max, wg, options).beta;
 }

@@ -33,17 +33,24 @@ Nesta fase, um primeiro solver funcional foi desenvolvido, capaz de gerar os art
 
 Esta é a fase atual do projeto. O foco é transformar os resultados do protótipo em uma reprodução cientificamente robusta e validada.
 
+**3.0. Fase 3A: Primeiro marco fechado na Figura 2 (✅ Implementada)**
+- A Eq. (3) e a Eq. (4) passaram a ser traduzidas operacionalmente por uma montagem vetorial explícita com funções-base `step` e teste por colocação, preservando a separação entre termo escalar volumétrico, termo regular com `grad' G` e termo distributivo de fronteira.
+- A busca de `beta` deixou de ser guiada por `modal_residual` e passou a priorizar `|det(A)|`, mantendo o residual modal apenas como diagnóstico do vetor modal estimado.
+- A Figura 2 passou a ter uma validação reproduzível inicial contra a curva "integral equation" digitizada do artigo, com artefatos automáticos de comparação, métricas e gráfico overlay.
+
 **3.1. Estabilização Numérica do Protótipo**
 - [ ] Consolidar a nova quadratura oscilatória de `G_NS` e medir seu custo computacional no lote das Figuras 2 a 6.
 - [ ] Reduzir o custo da avaliação de `G_NS`, `dG_NS/dx'` e `dG_NS/dy'` sem perder consistência com os testes de Green.
 - [ ] Revisar o tratamento singular remanescente de `G^S` para aproximar a média de célula do comportamento integral esperado pelo artigo.
 
 **3.2. Finalização da Formulação Vetorial**
-- [ ] Fechar a tradução vetorial completa do termo `grad' G` da equação integral (3), sem depender do operador híbrido atual.
-- [ ] Revisar e completar os blocos `A_xy` e `A_yx` para que o acoplamento vetorial fique consistente com a formulação documentada em `docs/02_teoria.md` e `docs/12_trilha_equacoes_para_codigo.md`.
-- [ ] Usar o caso homogêneo (Fig. 2) como primeiro teste de regressão e validação da formulação vetorial refinada.
+- [OK] Fechar a tradução vetorial explícita do termo `grad' G` da equação integral (3) na discretização atual com base `step` e colocação.
+- [OK] Revisar os blocos `A_xy` e `A_yx` para que o acoplamento vetorial fique consistente com a formulação documentada em `docs/02_teoria.md` e `docs/12_trilha_equacoes_para_codigo.md`.
+- [OK] Usar o caso homogêneo (Fig. 2) como primeiro teste de regressão e validação operacional da formulação vetorial refinada.
 
 **3.3. Validação Quantitativa das Curvas de Dispersão**
+- [OK] Digitalizar a curva "integral equation" da Figura 2 e armazená-la em `data/reference/`.
+- [OK] Gerar `comparison.csv`, `metrics.json` e `overlay.png` para a Figura 2 no fluxo padrão de execução.
 - [ ] Digitalizar as curvas de referência (Goell, Yeh, Marcatili) das imagens do artigo.
 - [ ] Armazenar os dados de referência em arquivos CSV (`data/reference/`).
 - [ ] Desenvolver scripts para gerar gráficos sobrepostos e calcular métricas de erro (ex: Erro Quadrático Médio).
@@ -55,8 +62,8 @@ Esta é a fase atual do projeto. O foco é transformar os resultados do protóti
 - [ ] Transformar essa inspeção em checagens reprodutíveis sempre que possível, evitando depender apenas de avaliação visual.
 
 **3.5. Aprimoramento da Busca Modal**
-- [ ] Substituir a busca atual guiada por `modal_residual` por um método mais rigoroso para localizar os zeros de `det(A) = 0`.
-- [ ] Garantir que a busca modal refinada preserve rastreabilidade entre `beta`, `det(A)`, residual modal e vetor modal estimado.
+- [OK] Substituir a busca atual guiada por `modal_residual` por um fluxo cujo critério principal seja `det(A) = 0`.
+- [OK] Garantir que a busca modal refinada preserve rastreabilidade entre `beta`, `det(A)`, residual modal e vetor modal estimado.
 
 ---
 

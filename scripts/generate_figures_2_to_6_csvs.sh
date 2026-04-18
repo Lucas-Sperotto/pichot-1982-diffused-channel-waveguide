@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 OUTPUT_ROOT="${1:-${ROOT_DIR}/out/figures}"
-MANIFEST_INPUT="${ROOT_DIR}/data/input/figures/manifest_figures_2_to_6.csv"
+MANIFEST_INPUT="${2:-${ROOT_DIR}/data/input/figures/manifest_figures_2_to_6.csv}"
 
 "${ROOT_DIR}/scripts/build.sh"
 
@@ -17,13 +17,18 @@ while IFS=, read -r FIGURE_ID CASE_ID CASE_PATH STUDY_KIND CURVE_ID CANONICAL_CS
         continue
     fi
 
-    if [[ ! -f "${ROOT_DIR}/${CASE_PATH}" ]]; then
+    RESOLVED_CASE_PATH="${CASE_PATH}"
+    if [[ "${RESOLVED_CASE_PATH}" != /* ]]; then
+        RESOLVED_CASE_PATH="${ROOT_DIR}/${RESOLVED_CASE_PATH}"
+    fi
+
+    if [[ ! -f "${RESOLVED_CASE_PATH}" ]]; then
         echo "Caso listado no manifest não encontrado: ${CASE_PATH}" >&2
         exit 1
     fi
 
     OUT_DIR="${OUTPUT_ROOT}/${FIGURE_ID}/${CASE_ID}"
-    "${ROOT_DIR}/scripts/run_case.sh" "${CASE_PATH}" "${OUT_DIR}"
+    "${ROOT_DIR}/scripts/run_case.sh" "${RESOLVED_CASE_PATH}" "${OUT_DIR}"
     echo "${FIGURE_ID},${CASE_ID},${STUDY_KIND},${CURVE_ID},${OUT_DIR},${CANONICAL_CSV},${SOURCE_STATUS},generated" >> "${INDEX_CSV}"
 done < <(tail -n +2 "${MANIFEST_INPUT}")
 
