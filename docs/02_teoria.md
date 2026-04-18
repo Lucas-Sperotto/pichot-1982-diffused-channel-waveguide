@@ -1,7 +1,7 @@
 # 2. Teoria
 
 Nota editorial:
-para a convenção geométrica operacional do repositório, o dicionário de símbolos e a separação explícita dos perfis de índice, ver `docs/02_formulacao_do_problema_de_valor_de_contorno.md` e `docs/02_symbol_dictionary.md`.
+para a convenção geométrica operacional do repositório, o dicionário de símbolos, a separação explícita dos perfis de índice e a tradução das Eqs. (1) a (8) em passos computacionais, ver `docs/02_formulacao_do_problema_de_valor_de_contorno.md`, `docs/02_symbol_dictionary.md` e `docs/12_trilha_equacoes_para_codigo.md`.
 
 A inomogeneidade considerada aqui é mostrada na Fig. 1. Ela preenche o domínio $\mathcal{D}_2$ (meio II - guia) com um perfil de permissividade $\varepsilon_2(x,y)$, que pode ser uma função descontínua ou contínua. Esse domínio é circundado pelos domínios $\mathcal{D}_1$ (superstrato) e $\mathcal{D}_3$ (substrato), com permissividades constantes $\varepsilon_1$ e $\varepsilon_3$, respectivamente $(\mu=\mu_0$ em cada meio). $\mathcal{R}$ é a fronteira entre os domínios $\mathcal{D}_2$, $\mathcal{D}_1$ e $\mathcal{D}_3$.
 

@@ -1,6 +1,6 @@
 # TODO
 
-Este arquivo consolida as pendências abertas ao final da Fase 1.
+Este arquivo consolida as pendências abertas ao final da Fase 1 e o ponto de partida da Fase 2.
 
 O objetivo é manter, na raiz do repositório, uma visão curta do que ainda precisa ser acompanhado sem espalhar a leitura por vários documentos de auditoria.
 
@@ -15,6 +15,8 @@ O objetivo é manter, na raiz do repositório, uma visão curta do que ainda pre
 
 ## 2. Pendências científico-numéricas para a Fase 2 em diante
 
+- [OK] Abrir uma trilha documental explícita entre as equações do artigo e os passos do código atual.
+  Resultado desta revisão: `docs/12_trilha_equacoes_para_codigo.md` agora descreve a discretização de $\mathcal{D}_2$, as funções-base step, a montagem de `A`, a avaliação de `G = G_S + G_NS` e o critério operacional hoje usado para localizar $\beta$.
 - [ ] Fechar a formulação vetorial completa do artigo no lugar do operador escalar/vetorial híbrido atual.
 - [ ] Substituir a busca modal aproximada por um procedimento mais rigoroso de localização dos zeros de $\det(A)$.
 - [ ] Melhorar a regularização e a quadratura da contribuição de fronteira.
@@ -38,3 +40,5 @@ A Fase 1 já pode ser tratada como documentalmente estruturada porque:
 - os casos de teste e seus caminhos de resolução já estão descritos em `docs/03_resultados_numericos.md`.
 
 Os itens acima não apagam as pendências abertas; apenas deixam claro que o restante do trabalho já não é mais “fundação documental”.
+
+A abertura formal da Fase 2 agora está em `docs/12_trilha_equacoes_para_codigo.md`.
