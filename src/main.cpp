@@ -53,6 +53,10 @@ int main(int argc, char* argv[]) {
                   << " por segmentos explícitos; a formulação vetorial completa do artigo ainda não"
                   << " está fechada."
                   << std::endl;
+        std::cout << "Quadratura de fronteira: "
+                  << boundary_quadrature_model_to_cstr(sim_case.assembly_options.boundary_quadrature_model)
+                  << " com " << sim_case.assembly_options.boundary_subdivisions
+                  << " subdivisões" << std::endl;
 
         WaveguideParams params = sim_case.waveguide;
         const Discretization discretization = sim_case.discretization;
@@ -85,8 +89,8 @@ int main(int argc, char* argv[]) {
 
             const double beta_min = k0 * params.n3;
             const double beta_max = k0 * params.n2m;
-            const double beta_found = find_beta_root(wg, beta_min, beta_max);
-            const double det_abs = calculate_determinant_magnitude(beta_found, wg);
+            const double beta_found = find_beta_root(wg, beta_min, beta_max, sim_case.assembly_options);
+            const double det_abs = calculate_determinant_magnitude(beta_found, wg, sim_case.assembly_options);
 
             const double beta_norm = beta_found / k0;
             const double B_norm = ((beta_norm * beta_norm) - params.n3 * params.n3) /

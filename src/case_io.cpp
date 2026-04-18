@@ -28,6 +28,15 @@ std::size_t find_key_position(const std::string& text, const std::string& key) {
     return position;
 }
 
+std::size_t find_optional_key_position(const std::string& text, const std::string& key) {
+    const std::string token = "\"" + key + "\"";
+    return text.find(token);
+}
+
+bool has_key(const std::string& text, const std::string& key) {
+    return find_optional_key_position(text, key) != std::string::npos;
+}
+
 std::string extract_object(const std::string& text, const std::string& key) {
     const std::size_t key_position = find_key_position(text, key);
     const std::size_t brace_start = text.find('{', key_position);
@@ -48,6 +57,13 @@ std::string extract_object(const std::string& text, const std::string& key) {
     }
 
     throw std::runtime_error("Objeto JSON não fechado para a chave: " + key);
+}
+
+std::string extract_optional_object(const std::string& text, const std::string& key) {
+    if (!has_key(text, key)) {
+        return {};
+    }
+    return extract_object(text, key);
 }
 
 std::string extract_raw_value(const std::string& text, const std::string& key) {
@@ -90,6 +106,18 @@ std::string extract_string(const std::string& text, const std::string& key) {
     return extract_raw_value(text, key);
 }
 
+bool extract_bool(const std::string& text, const std::string& key) {
+    const std::string value = extract_raw_value(text, key);
+    if (value == "true") {
+        return true;
+    }
+    if (value == "false") {
+        return false;
+    }
+
+    throw std::runtime_error("Valor booleano inválido para a chave: " + key);
+}
+
 ProfileType parse_profile_type(const std::string& value) {
     if (value == "homogeneous") {
         return ProfileType::HOMOGENEOUS;
@@ -102,6 +130,17 @@ ProfileType parse_profile_type(const std::string& value) {
     }
 
     throw std::runtime_error("Tipo de perfil desconhecido: " + value);
+}
+
+BoundaryQuadratureModel parse_boundary_quadrature_model(const std::string& value) {
+    if (value == "midpoint") {
+        return BoundaryQuadratureModel::MIDPOINT;
+    }
+    if (value == "gauss2") {
+        return BoundaryQuadratureModel::GAUSS2;
+    }
+
+    throw std::runtime_error("Modelo de quadratura de fronteira desconhecido: " + value);
 }
 
 void validate_case(const SimulationCase& sim_case) {
@@ -120,6 +159,9 @@ void validate_case(const SimulationCase& sim_case) {
     if (sim_case.sweep.v_start <= 0.0 || sim_case.sweep.v_end < sim_case.sweep.v_start ||
         sim_case.sweep.v_step <= 0.0) {
         throw std::runtime_error("A varredura em V deve satisfazer v_start > 0, v_end >= v_start e v_step > 0.");
+    }
+    if (sim_case.assembly_options.boundary_subdivisions == 0) {
+        throw std::runtime_error("boundary_subdivisions deve ser positivo.");
     }
 }
 
@@ -141,6 +183,15 @@ void write_summary_file(const SimulationCase& sim_case,
     summary << "Ny: " << sim_case.discretization.Ny << "\n";
     summary << "V_range: [" << sim_case.sweep.v_start << ", " << sim_case.sweep.v_end
             << "] step " << sim_case.sweep.v_step << "\n";
+    summary << "include_scalar_contrast: " << (sim_case.assembly_options.include_scalar_contrast ? "true" : "false")
+            << "\n";
+    summary << "include_regular_gradient: " << (sim_case.assembly_options.include_regular_gradient ? "true" : "false")
+            << "\n";
+    summary << "include_boundary_distribution: "
+            << (sim_case.assembly_options.include_boundary_distribution ? "true" : "false") << "\n";
+    summary << "boundary_quadrature_model: "
+            << boundary_quadrature_model_to_cstr(sim_case.assembly_options.boundary_quadrature_model) << "\n";
+    summary << "boundary_subdivisions: " << sim_case.assembly_options.boundary_subdivisions << "\n";
     summary << "notes: " << sim_case.notes << "\n";
     summary << "solver_status: prototype_boundary_segments_operator\n";
     summary << "limitations: G^S e G^NS escalares ja estao implementadas no regime guiado com y >= 0 e y' >= 0; a montagem atual usa o termo (k^2-k3^2)G, a parte volumetrica regular de eps*grad(1/eps) multiplicando grad'G e uma aproximacao explicita do termo de fronteira por segmentos da borda da malha; a formulacao vetorial completa, um tratamento mais rigoroso da singularidade/quadra da fronteira e a busca rigorosa por det(A)=0 ainda permanecem pendentes.\n";
@@ -155,6 +206,7 @@ SimulationCase load_case_from_json(const std::string& path) {
     const std::string geometry = extract_object(text, "geometry");
     const std::string discretization = extract_object(text, "discretization");
     const std::string sweep = extract_object(text, "sweep");
+    const std::string solver = extract_optional_object(text, "solver");
 
     SimulationCase sim_case;
     sim_case.case_id = extract_string(text, "case_id");
@@ -177,6 +229,25 @@ SimulationCase load_case_from_json(const std::string& path) {
     sim_case.sweep.v_start = extract_double(sweep, "v_start");
     sim_case.sweep.v_end = extract_double(sweep, "v_end");
     sim_case.sweep.v_step = extract_double(sweep, "v_step");
+
+    if (!solver.empty()) {
+        if (has_key(solver, "include_scalar_contrast")) {
+            sim_case.assembly_options.include_scalar_contrast = extract_bool(solver, "include_scalar_contrast");
+        }
+        if (has_key(solver, "include_regular_gradient")) {
+            sim_case.assembly_options.include_regular_gradient = extract_bool(solver, "include_regular_gradient");
+        }
+        if (has_key(solver, "include_boundary_distribution")) {
+            sim_case.assembly_options.include_boundary_distribution = extract_bool(solver, "include_boundary_distribution");
+        }
+        if (has_key(solver, "boundary_quadrature_model")) {
+            sim_case.assembly_options.boundary_quadrature_model =
+                parse_boundary_quadrature_model(extract_string(solver, "boundary_quadrature_model"));
+        }
+        if (has_key(solver, "boundary_subdivisions")) {
+            sim_case.assembly_options.boundary_subdivisions = extract_size(solver, "boundary_subdivisions");
+        }
+    }
 
     validate_case(sim_case);
     return sim_case;

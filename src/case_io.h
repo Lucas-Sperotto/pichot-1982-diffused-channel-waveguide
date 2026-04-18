@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "matrix_solver.h"
 #include "waveguide.h"
 
 struct SweepRange {
@@ -19,6 +20,7 @@ struct SimulationCase {
     WaveguideParams waveguide;
     Discretization discretization;
     SweepRange sweep;
+    AssemblyOptions assembly_options;
 };
 
 SimulationCase load_case_from_json(const std::string& path);

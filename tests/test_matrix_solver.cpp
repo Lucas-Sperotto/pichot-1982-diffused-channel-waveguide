@@ -175,6 +175,37 @@ void test_boundary_distribution_changes_homogeneous_operator() {
             "O termo de fronteira deveria introduzir acoplamentos cruzados via normal da borda.");
 }
 
+void test_boundary_quadrature_models_are_distinct() {
+    const Waveguide wg = make_small_homogeneous_waveguide();
+    const double beta = 0.5 * wg.get_k0() * (wg.get_params().n2m + wg.get_params().n3);
+    const std::size_t matrix_size = 2 * wg.get_cells().size();
+    ComplexMatrix midpoint_matrix(matrix_size, matrix_size);
+    ComplexMatrix gauss_matrix(matrix_size, matrix_size);
+
+    AssemblyOptions midpoint_options;
+    midpoint_options.include_boundary_distribution = true;
+    midpoint_options.boundary_quadrature_model = BoundaryQuadratureModel::MIDPOINT;
+    midpoint_options.boundary_subdivisions = 1;
+
+    AssemblyOptions gauss_options;
+    gauss_options.include_boundary_distribution = true;
+    gauss_options.boundary_quadrature_model = BoundaryQuadratureModel::GAUSS2;
+    gauss_options.boundary_subdivisions = 2;
+
+    build_matrix_A(midpoint_matrix, beta, wg, midpoint_options);
+    build_matrix_A(gauss_matrix, beta, wg, gauss_options);
+
+    double max_difference = 0.0;
+    for (std::size_t row = 0; row < matrix_size; ++row) {
+        for (std::size_t col = 0; col < matrix_size; ++col) {
+            max_difference = std::max(max_difference, std::abs(midpoint_matrix.at(row, col) - gauss_matrix.at(row, col)));
+        }
+    }
+
+    require(max_difference > 0.0,
+            "Modelos distintos de quadratura de fronteira deveriam produzir matrizes distintas.");
+}
+
 void test_beta_search_reduces_determinant_residual() {
     const Waveguide wg = make_small_homogeneous_waveguide();
     const double beta_min = wg.get_k0() * wg.get_params().n3;
@@ -202,6 +233,7 @@ int main() {
     test_boundary_segment_extraction_is_explicit();
     test_parabolic_profile_introduces_regular_grad_coupling();
     test_boundary_distribution_changes_homogeneous_operator();
+    test_boundary_quadrature_models_are_distinct();
     test_beta_search_reduces_determinant_residual();
     std::cout << "Matrix solver prototype checks passed." << std::endl;
     return 0;

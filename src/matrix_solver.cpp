@@ -14,6 +14,8 @@ constexpr int kInitialSearchSamples = 7;
 constexpr int kRefinementSamples = 5;
 constexpr int kRefinementIterations = 4;
 
+constexpr double kGaussPoint = 0.5773502691896257;
+
 double get_background_k_squared(const Waveguide& wg) {
     const double k0 = wg.get_k0();
     return k0 * k0 * wg.get_params().n3 * wg.get_params().n3;
@@ -160,6 +162,17 @@ SearchSample best_sample_in_grid(double left,
 
 } // namespace
 
+const char* boundary_quadrature_model_to_cstr(BoundaryQuadratureModel model) {
+    switch (model) {
+        case BoundaryQuadratureModel::MIDPOINT:
+            return "midpoint";
+        case BoundaryQuadratureModel::GAUSS2:
+            return "gauss2";
+    }
+
+    throw std::runtime_error("BoundaryQuadratureModel inválido.");
+}
+
 ComplexMatrix::ComplexMatrix(std::size_t rows_in, std::size_t cols_in)
     : rows(rows_in), cols(cols_in), data(rows_in * cols_in, Complex(0.0, 0.0)) {}
 
@@ -238,43 +251,49 @@ void build_matrix_A(ComplexMatrix& A, double beta, const Waveguide& wg, const As
                         continue;
                     }
 
-                    const Complex dG_dx_boundary =
-                        calculate_dG_S_dx_source(observation.cx,
-                                                 observation.cy,
-                                                 segment.x_midpoint,
-                                                 segment.y_midpoint,
-                                                 beta,
-                                                 wg) +
-                        calculate_dG_NS_dx_source(observation.cx,
-                                                  observation.cy,
-                                                  segment.x_midpoint,
-                                                  segment.y_midpoint,
-                                                  beta,
-                                                  wg);
-                    const Complex dG_dy_boundary =
-                        calculate_dG_S_dy_source(observation.cx,
-                                                 observation.cy,
-                                                 segment.x_midpoint,
-                                                 segment.y_midpoint,
-                                                 beta,
-                                                 wg) +
-                        calculate_dG_NS_dy_source(observation.cx,
-                                                  observation.cy,
-                                                  segment.x_midpoint,
-                                                  segment.y_midpoint,
-                                                  beta,
-                                                  wg);
+                    const Vector2 tangent{-segment.outward_normal.y, segment.outward_normal.x};
+                    const std::size_t subdivisions = std::max<std::size_t>(1, options.boundary_subdivisions);
+                    const double subsegment_length = segment.length / static_cast<double>(subdivisions);
+                    Complex integrated_dG_dx_boundary(0.0, 0.0);
+                    Complex integrated_dG_dy_boundary(0.0, 0.0);
+
+                    for (std::size_t subdivision = 0; subdivision < subdivisions; ++subdivision) {
+                        const double sub_left = -0.5 * segment.length + subdivision * subsegment_length;
+                        const double sub_right = sub_left + subsegment_length;
+
+                        auto accumulate_boundary_sample = [&](double local_coordinate, double weight) {
+                            const double x_source = segment.x_midpoint + local_coordinate * tangent.x;
+                            const double y_source = segment.y_midpoint + local_coordinate * tangent.y;
+                            integrated_dG_dx_boundary +=
+                                weight * (calculate_dG_S_dx_source(
+                                              observation.cx, observation.cy, x_source, y_source, beta, wg) +
+                                          calculate_dG_NS_dx_source(
+                                              observation.cx, observation.cy, x_source, y_source, beta, wg));
+                            integrated_dG_dy_boundary +=
+                                weight * (calculate_dG_S_dy_source(
+                                              observation.cx, observation.cy, x_source, y_source, beta, wg) +
+                                          calculate_dG_NS_dy_source(
+                                              observation.cx, observation.cy, x_source, y_source, beta, wg));
+                        };
+
+                        if (options.boundary_quadrature_model == BoundaryQuadratureModel::MIDPOINT) {
+                            const double midpoint = 0.5 * (sub_left + sub_right);
+                            accumulate_boundary_sample(midpoint, subsegment_length);
+                        } else {
+                            const double midpoint = 0.5 * (sub_left + sub_right);
+                            const double half_length = 0.5 * (sub_right - sub_left);
+                            accumulate_boundary_sample(midpoint - kGaussPoint * half_length, half_length);
+                            accumulate_boundary_sample(midpoint + kGaussPoint * half_length, half_length);
+                        }
+                    }
+
                     const Vector2 boundary_coefficient{
                         segment.epsilon_jump_factor * segment.outward_normal.x,
                         segment.epsilon_jump_factor * segment.outward_normal.y};
-                    const Complex boundary_kernel_xx =
-                        segment.length * boundary_coefficient.x * dG_dx_boundary;
-                    const Complex boundary_kernel_xy =
-                        segment.length * boundary_coefficient.y * dG_dx_boundary;
-                    const Complex boundary_kernel_yx =
-                        segment.length * boundary_coefficient.x * dG_dy_boundary;
-                    const Complex boundary_kernel_yy =
-                        segment.length * boundary_coefficient.y * dG_dy_boundary;
+                    const Complex boundary_kernel_xx = boundary_coefficient.x * integrated_dG_dx_boundary;
+                    const Complex boundary_kernel_xy = boundary_coefficient.y * integrated_dG_dx_boundary;
+                    const Complex boundary_kernel_yx = boundary_coefficient.x * integrated_dG_dy_boundary;
+                    const Complex boundary_kernel_yy = boundary_coefficient.y * integrated_dG_dy_boundary;
 
                     A_xx -= boundary_kernel_xx;
                     A_xy -= boundary_kernel_xy;

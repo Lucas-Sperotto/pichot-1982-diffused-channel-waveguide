@@ -18,10 +18,17 @@ struct ComplexMatrix {
     const Complex& at(std::size_t row, std::size_t col) const;
 };
 
+enum class BoundaryQuadratureModel {
+    MIDPOINT,
+    GAUSS2
+};
+
 struct AssemblyOptions {
     bool include_scalar_contrast = true;
     bool include_regular_gradient = true;
     bool include_boundary_distribution = true;
+    BoundaryQuadratureModel boundary_quadrature_model = BoundaryQuadratureModel::GAUSS2;
+    std::size_t boundary_subdivisions = 2;
 };
 
 // Etapa atual:
@@ -36,3 +43,5 @@ double calculate_determinant_magnitude(double beta, const Waveguide& wg);
 double calculate_determinant_magnitude(double beta, const Waveguide& wg, const AssemblyOptions& options);
 double find_beta_root(const Waveguide& wg, double beta_min, double beta_max);
 double find_beta_root(const Waveguide& wg, double beta_min, double beta_max, const AssemblyOptions& options);
+
+const char* boundary_quadrature_model_to_cstr(BoundaryQuadratureModel model);
