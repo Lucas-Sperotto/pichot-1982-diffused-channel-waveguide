@@ -53,8 +53,10 @@ void test_homogeneous_blocks_remain_decoupled() {
     const double beta = 0.5 * wg.get_k0() * (wg.get_params().n2m + wg.get_params().n3);
     const std::size_t matrix_size = 2 * wg.get_cells().size();
     ComplexMatrix A(matrix_size, matrix_size);
+    AssemblyOptions options;
+    options.include_boundary_distribution = false;
 
-    build_matrix_A(A, beta, wg);
+    build_matrix_A(A, beta, wg, options);
 
     const std::size_t N = wg.get_cells().size();
     for (std::size_t i = 0; i < N; ++i) {
@@ -82,13 +84,39 @@ void test_regular_gradient_field_matches_profile_expectation() {
             "O perfil parabólico 1-D deveria gerar componente regular positiva em y no interior.");
 }
 
+void test_boundary_segment_extraction_is_explicit() {
+    const Waveguide homogeneous = make_small_homogeneous_waveguide();
+    require(homogeneous.get_boundary_segments().size() == 10,
+            "O caso homogêneo 3x2 deveria expor 10 segmentos de fronteira explícitos.");
+
+    const Waveguide parabolic = make_small_parabolic_waveguide();
+    require(parabolic.get_boundary_segments().size() == 9,
+            "O caso parabólico 3x3 deveria expor 9 segmentos porque o topo é contínuo com o substrato.");
+
+    bool found_bottom_jump = false;
+    bool found_side_jump = false;
+    for (const BoundarySegment& segment : parabolic.get_boundary_segments()) {
+        if (segment.outward_normal.y < 0.0) {
+            found_bottom_jump = true;
+        }
+        if (std::abs(segment.outward_normal.x) > 0.0) {
+            found_side_jump = true;
+        }
+    }
+
+    require(found_bottom_jump, "O perfil parabólico deveria expor segmentos de fronteira na interface inferior.");
+    require(found_side_jump, "O perfil parabólico deveria expor segmentos de fronteira laterais.");
+}
+
 void test_parabolic_profile_introduces_regular_grad_coupling() {
     const Waveguide wg = make_small_parabolic_waveguide();
     const double beta = 0.5 * wg.get_k0() * (wg.get_params().n2m + wg.get_params().n3);
     const std::size_t matrix_size = 2 * wg.get_cells().size();
     ComplexMatrix A(matrix_size, matrix_size);
+    AssemblyOptions options;
+    options.include_boundary_distribution = false;
 
-    build_matrix_A(A, beta, wg);
+    build_matrix_A(A, beta, wg, options);
 
     const std::size_t N = wg.get_cells().size();
     double max_xy = 0.0;
@@ -109,6 +137,42 @@ void test_parabolic_profile_introduces_regular_grad_coupling() {
             "O termo regular com grad'G deveria diferenciar A_xx e A_yy no caso parabólico.");
     require(max_yx < 1e-12,
             "No perfil parabólico 1-D, a parte regular não deveria introduzir A_yx porque o gradiente em x é nulo.");
+}
+
+void test_boundary_distribution_changes_homogeneous_operator() {
+    const Waveguide wg = make_small_homogeneous_waveguide();
+    const double beta = 0.5 * wg.get_k0() * (wg.get_params().n2m + wg.get_params().n3);
+    const std::size_t matrix_size = 2 * wg.get_cells().size();
+    ComplexMatrix without_boundary(matrix_size, matrix_size);
+    ComplexMatrix with_boundary(matrix_size, matrix_size);
+
+    AssemblyOptions options_without_boundary;
+    options_without_boundary.include_boundary_distribution = false;
+
+    AssemblyOptions options_with_boundary;
+    options_with_boundary.include_boundary_distribution = true;
+
+    build_matrix_A(without_boundary, beta, wg, options_without_boundary);
+    build_matrix_A(with_boundary, beta, wg, options_with_boundary);
+
+    double max_difference = 0.0;
+    double max_off_diagonal = 0.0;
+
+    const std::size_t N = wg.get_cells().size();
+    for (std::size_t i = 0; i < N; ++i) {
+        for (std::size_t j = 0; j < N; ++j) {
+            max_difference = std::max(max_difference, std::abs(with_boundary.at(i, j) - without_boundary.at(i, j)));
+            max_difference = std::max(
+                max_difference, std::abs(with_boundary.at(i + N, j + N) - without_boundary.at(i + N, j + N)));
+            max_off_diagonal = std::max(max_off_diagonal, std::abs(with_boundary.at(i, j + N)));
+            max_off_diagonal = std::max(max_off_diagonal, std::abs(with_boundary.at(i + N, j)));
+        }
+    }
+
+    require(max_difference > 0.0,
+            "O termo de fronteira deveria alterar a matriz mesmo no caso homogêneo em volume.");
+    require(max_off_diagonal > 0.0,
+            "O termo de fronteira deveria introduzir acoplamentos cruzados via normal da borda.");
 }
 
 void test_beta_search_reduces_determinant_residual() {
@@ -135,7 +199,9 @@ void test_beta_search_reduces_determinant_residual() {
 int main() {
     test_homogeneous_blocks_remain_decoupled();
     test_regular_gradient_field_matches_profile_expectation();
+    test_boundary_segment_extraction_is_explicit();
     test_parabolic_profile_introduces_regular_grad_coupling();
+    test_boundary_distribution_changes_homogeneous_operator();
     test_beta_search_reduces_determinant_residual();
     std::cout << "Matrix solver prototype checks passed." << std::endl;
     return 0;

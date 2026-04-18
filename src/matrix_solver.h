@@ -18,11 +18,21 @@ struct ComplexMatrix {
     const Complex& at(std::size_t row, std::size_t col) const;
 };
 
+struct AssemblyOptions {
+    bool include_scalar_contrast = true;
+    bool include_regular_gradient = true;
+    bool include_boundary_distribution = true;
+};
+
 // Etapa atual:
-// - operador escalar protótipo baseado apenas no termo (k^2 - k3^2) G da equação integral;
-// - blocos Ex e Ey desacoplados e idênticos;
+// - termo escalar (k^2 - k3^2) G;
+// - parte volumétrica regular de eps grad(1/eps) multiplicando grad'G;
+// - termo de fronteira isolado como soma explícita sobre segmentos da borda da malha;
 // - busca modal por mínimo de |det(A)|, ainda não pela formulação vetorial completa do artigo.
 void build_matrix_A(ComplexMatrix& A, double beta, const Waveguide& wg);
+void build_matrix_A(ComplexMatrix& A, double beta, const Waveguide& wg, const AssemblyOptions& options);
 Complex calculate_determinant(const ComplexMatrix& A);
 double calculate_determinant_magnitude(double beta, const Waveguide& wg);
+double calculate_determinant_magnitude(double beta, const Waveguide& wg, const AssemblyOptions& options);
 double find_beta_root(const Waveguide& wg, double beta_min, double beta_max);
+double find_beta_root(const Waveguide& wg, double beta_min, double beta_max, const AssemblyOptions& options);

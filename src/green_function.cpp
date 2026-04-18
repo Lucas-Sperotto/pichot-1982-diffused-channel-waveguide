@@ -189,9 +189,16 @@ Complex calculate_dG_NS_dy_source(double x, double y, double xp, double yp, doub
     validate_supported_regime(y, yp, beta, wg);
 
     const double h = finite_difference_step(wg);
-    const double derivative =
-        (calculate_G_NS(x, y, xp, yp + h, beta, wg).real() - calculate_G_NS(x, y, xp, yp - h, beta, wg).real()) /
-        (2.0 * h);
+    double derivative = 0.0;
+
+    if (yp > h) {
+        derivative =
+            (calculate_G_NS(x, y, xp, yp + h, beta, wg).real() - calculate_G_NS(x, y, xp, yp - h, beta, wg).real()) /
+            (2.0 * h);
+    } else {
+        derivative =
+            (calculate_G_NS(x, y, xp, yp + h, beta, wg).real() - calculate_G_NS(x, y, xp, yp, beta, wg).real()) / h;
+    }
 
     return Complex(derivative, 0.0);
 }

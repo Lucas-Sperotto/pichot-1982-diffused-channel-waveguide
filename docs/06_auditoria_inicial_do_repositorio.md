@@ -45,7 +45,8 @@ Atualização desta auditoria:
 - a matriz usada pelo executável já não é mais identidade pura: existe agora um operador escalar protótipo baseado apenas no termo `(k^2-k_3^2)G`, replicado nos blocos `E_x` e `E_y`;
 - a busca modal do executável já minimiza `|det(A)|` e grava esse residual nas saídas CSV, mas isso ainda não equivale à busca rigorosa dos zeros da formulação vetorial completa.
 - a montagem já inclui agora, de forma separada e auditável, a parte volumétrica regular de `\varepsilon \nabla(1/\varepsilon)` multiplicando `\mathrm{grad}'\,G`;
-- o termo distribucional de fronteira introduzido na Eq. (4) continua explicitamente pendente e não foi absorvido por aproximação silenciosa.
+- o termo distribucional de fronteira introduzido na Eq. (4) já aparece de forma explícita no código como soma sobre segmentos de borda da malha, com normal externa, comprimento e salto de `1/\varepsilon` registrados separadamente;
+- esse termo de fronteira ainda deve ser lido como uma aproximação auditável por quadratura de linha em segmentos, não como tratamento final e fechado da formulação vetorial do artigo.
 
 Portanto, o projeto já saiu do estágio de infraestrutura pura, mas qualquer resultado modal ainda deve ser lido como protótipo, não como reprodução validada do artigo.
 

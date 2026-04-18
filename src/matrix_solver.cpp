@@ -124,14 +124,15 @@ struct SearchSample {
     double residual;
 };
 
-SearchSample evaluate_sample(double beta, const Waveguide& wg) {
-    return SearchSample{beta, calculate_determinant_magnitude(beta, wg)};
+SearchSample evaluate_sample(double beta, const Waveguide& wg, const AssemblyOptions& options) {
+    return SearchSample{beta, calculate_determinant_magnitude(beta, wg, options)};
 }
 
 SearchSample best_sample_in_grid(double left,
                                  double right,
                                  int sample_count,
                                  const Waveguide& wg,
+                                 const AssemblyOptions& options,
                                  double* next_left,
                                  double* next_right) {
     SearchSample best{left, std::numeric_limits<double>::infinity()};
@@ -140,7 +141,7 @@ SearchSample best_sample_in_grid(double left,
 
     for (int i = 0; i < sample_count; ++i) {
         const double alpha = sample_count == 1 ? 0.0 : static_cast<double>(i) / (sample_count - 1);
-        samples.push_back(evaluate_sample(left + alpha * (right - left), wg));
+        samples.push_back(evaluate_sample(left + alpha * (right - left), wg, options));
     }
 
     auto best_it = std::min_element(
@@ -171,6 +172,10 @@ const Complex& ComplexMatrix::at(std::size_t row, std::size_t col) const {
 }
 
 void build_matrix_A(ComplexMatrix& A, double beta, const Waveguide& wg) {
+    build_matrix_A(A, beta, wg, AssemblyOptions{});
+}
+
+void build_matrix_A(ComplexMatrix& A, double beta, const Waveguide& wg, const AssemblyOptions& options) {
     const auto& cells = wg.get_cells();
     const std::size_t N = cells.size();
     const double background_k_squared = get_background_k_squared(wg);
@@ -190,35 +195,93 @@ void build_matrix_A(ComplexMatrix& A, double beta, const Waveguide& wg) {
             Complex A_yx(0.0, 0.0);
             Complex A_yy(0.0, 0.0);
 
-            const double contrast_k_squared =
-                wg.get_k_squared(source.cx, source.cy) - background_k_squared;
-            const double source_area = source.dx * source.dy;
-            const Complex green_average = evaluate_green_between_cells(observation, source, beta, wg);
-            const Complex dG_dx_average = evaluate_dG_dx_source_between_cells(observation, source, beta, wg);
-            const Complex dG_dy_average = evaluate_dG_dy_source_between_cells(observation, source, beta, wg);
-            const Vector2 epsilon_grad_inverse =
-                wg.get_regular_epsilon_grad_inverse(source.cx, source.cy);
-            const Complex scalar_kernel = contrast_k_squared * source_area * green_average;
-            const Complex regular_kernel_xx = source_area * epsilon_grad_inverse.x * dG_dx_average;
-            const Complex regular_kernel_xy = source_area * epsilon_grad_inverse.y * dG_dx_average;
-            const Complex regular_kernel_yx = source_area * epsilon_grad_inverse.x * dG_dy_average;
-            const Complex regular_kernel_yy = source_area * epsilon_grad_inverse.y * dG_dy_average;
-
             if (i == j) {
                 A_xx = Complex(1.0, 0.0);
                 A_yy = Complex(1.0, 0.0);
             }
 
-            // Etapa intermediária auditável:
-            // - mantém o termo escalar (k^2-k3^2) G nos blocos diagonais;
-            // - acrescenta a parte volumétrica regular de ε grad(1/ε) · E multiplicando grad'G;
-            // - ainda não inclui o termo distribucional de fronteira discutido na Eq. (4).
-            A_xx -= scalar_kernel;
-            A_yy -= scalar_kernel;
-            A_xx -= regular_kernel_xx;
-            A_xy -= regular_kernel_xy;
-            A_yx -= regular_kernel_yx;
-            A_yy -= regular_kernel_yy;
+            const double source_area = source.dx * source.dy;
+
+            if (options.include_scalar_contrast || options.include_regular_gradient) {
+                const Complex green_average = evaluate_green_between_cells(observation, source, beta, wg);
+                const Complex dG_dx_average =
+                    evaluate_dG_dx_source_between_cells(observation, source, beta, wg);
+                const Complex dG_dy_average =
+                    evaluate_dG_dy_source_between_cells(observation, source, beta, wg);
+
+                if (options.include_scalar_contrast) {
+                    const double contrast_k_squared =
+                        wg.get_k_squared(source.cx, source.cy) - background_k_squared;
+                    const Complex scalar_kernel = contrast_k_squared * source_area * green_average;
+                    A_xx -= scalar_kernel;
+                    A_yy -= scalar_kernel;
+                }
+
+                if (options.include_regular_gradient) {
+                    const Vector2 epsilon_grad_inverse =
+                        wg.get_regular_epsilon_grad_inverse(source.cx, source.cy);
+                    const Complex regular_kernel_xx = source_area * epsilon_grad_inverse.x * dG_dx_average;
+                    const Complex regular_kernel_xy = source_area * epsilon_grad_inverse.y * dG_dx_average;
+                    const Complex regular_kernel_yx = source_area * epsilon_grad_inverse.x * dG_dy_average;
+                    const Complex regular_kernel_yy = source_area * epsilon_grad_inverse.y * dG_dy_average;
+
+                    A_xx -= regular_kernel_xx;
+                    A_xy -= regular_kernel_xy;
+                    A_yx -= regular_kernel_yx;
+                    A_yy -= regular_kernel_yy;
+                }
+            }
+
+            if (options.include_boundary_distribution) {
+                for (const BoundarySegment& segment : wg.get_boundary_segments()) {
+                    if (segment.cell_id != source.id) {
+                        continue;
+                    }
+
+                    const Complex dG_dx_boundary =
+                        calculate_dG_S_dx_source(observation.cx,
+                                                 observation.cy,
+                                                 segment.x_midpoint,
+                                                 segment.y_midpoint,
+                                                 beta,
+                                                 wg) +
+                        calculate_dG_NS_dx_source(observation.cx,
+                                                  observation.cy,
+                                                  segment.x_midpoint,
+                                                  segment.y_midpoint,
+                                                  beta,
+                                                  wg);
+                    const Complex dG_dy_boundary =
+                        calculate_dG_S_dy_source(observation.cx,
+                                                 observation.cy,
+                                                 segment.x_midpoint,
+                                                 segment.y_midpoint,
+                                                 beta,
+                                                 wg) +
+                        calculate_dG_NS_dy_source(observation.cx,
+                                                  observation.cy,
+                                                  segment.x_midpoint,
+                                                  segment.y_midpoint,
+                                                  beta,
+                                                  wg);
+                    const Vector2 boundary_coefficient{
+                        segment.epsilon_jump_factor * segment.outward_normal.x,
+                        segment.epsilon_jump_factor * segment.outward_normal.y};
+                    const Complex boundary_kernel_xx =
+                        segment.length * boundary_coefficient.x * dG_dx_boundary;
+                    const Complex boundary_kernel_xy =
+                        segment.length * boundary_coefficient.y * dG_dx_boundary;
+                    const Complex boundary_kernel_yx =
+                        segment.length * boundary_coefficient.x * dG_dy_boundary;
+                    const Complex boundary_kernel_yy =
+                        segment.length * boundary_coefficient.y * dG_dy_boundary;
+
+                    A_xx -= boundary_kernel_xx;
+                    A_xy -= boundary_kernel_xy;
+                    A_yx -= boundary_kernel_yx;
+                    A_yy -= boundary_kernel_yy;
+                }
+            }
 
             A.at(i, j) = A_xx;
             A.at(i, j + N) = A_xy;
@@ -283,10 +346,14 @@ Complex calculate_determinant(const ComplexMatrix& A) {
 }
 
 double calculate_determinant_magnitude(double beta, const Waveguide& wg) {
+    return calculate_determinant_magnitude(beta, wg, AssemblyOptions{});
+}
+
+double calculate_determinant_magnitude(double beta, const Waveguide& wg, const AssemblyOptions& options) {
     try {
         const std::size_t matrix_size = 2 * wg.get_cells().size();
         ComplexMatrix A(matrix_size, matrix_size);
-        build_matrix_A(A, beta, wg);
+        build_matrix_A(A, beta, wg, options);
         const double residual = std::abs(calculate_determinant(A));
         return std::isfinite(residual) ? residual : std::numeric_limits<double>::infinity();
     } catch (const std::exception&) {
@@ -295,6 +362,13 @@ double calculate_determinant_magnitude(double beta, const Waveguide& wg) {
 }
 
 double find_beta_root(const Waveguide& wg, double beta_min, double beta_max) {
+    return find_beta_root(wg, beta_min, beta_max, AssemblyOptions{});
+}
+
+double find_beta_root(const Waveguide& wg,
+                      double beta_min,
+                      double beta_max,
+                      const AssemblyOptions& options) {
     const double margin = get_beta_margin(wg, beta_min, beta_max);
     double left = beta_min + margin;
     double right = beta_max - margin;
@@ -305,13 +379,14 @@ double find_beta_root(const Waveguide& wg, double beta_min, double beta_max) {
 
     double next_left = left;
     double next_right = right;
-    SearchSample best = best_sample_in_grid(left, right, kInitialSearchSamples, wg, &next_left, &next_right);
+    SearchSample best =
+        best_sample_in_grid(left, right, kInitialSearchSamples, wg, options, &next_left, &next_right);
     left = next_left;
     right = next_right;
 
     for (int iteration = 0; iteration < kRefinementIterations; ++iteration) {
-        SearchSample refined =
-            best_sample_in_grid(left, right, kRefinementSamples, wg, &next_left, &next_right);
+        SearchSample refined = best_sample_in_grid(
+            left, right, kRefinementSamples, wg, options, &next_left, &next_right);
         if (refined.residual < best.residual) {
             best = refined;
         }

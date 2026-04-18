@@ -16,6 +16,18 @@ Vector2 zero_vector() {
     return Vector2{0.0, 0.0};
 }
 
+double jump_factor_from_indices(double inside_refractive_index, double outside_refractive_index) {
+    if (inside_refractive_index <= 0.0 || outside_refractive_index <= 0.0) {
+        throw std::runtime_error("Índice de refração não positivo ao avaliar o salto de fronteira.");
+    }
+
+    // Convenção explícita desta etapa:
+    // [1/eps] = (1/eps)_outside - (1/eps)_inside, com normal apontando para fora de D2.
+    return (inside_refractive_index * inside_refractive_index) /
+               (outside_refractive_index * outside_refractive_index) -
+           1.0;
+}
+
 } // namespace
 
 double n_homogeneous(double x, double y, const WaveguideParams& p) {
@@ -120,6 +132,7 @@ Waveguide::Waveguide(const WaveguideParams& params, const Discretization& disc)
     // Cria a malha de células (região do núcleo D2)
     double dx = params.a / discretization.Nx;
     double dy = params.b / discretization.Ny;
+    const double probe_offset = 1e-8 * std::min(dx, dy);
     size_t current_id = 0;
     for (size_t i = 0; i < discretization.Nx; ++i) {
         for (size_t j = 0; j < discretization.Ny; ++j) {
@@ -130,6 +143,46 @@ Waveguide::Waveguide(const WaveguideParams& params, const Discretization& disc)
             cell.dy = dy;
             cell.id = current_id++;
             cells.push_back(cell);
+
+            const auto append_boundary_segment_if_needed =
+                [&](double x_midpoint, double y_midpoint, Vector2 outward_normal, double length) {
+                    const double x_inside = x_midpoint - outward_normal.x * probe_offset;
+                    const double y_inside = y_midpoint - outward_normal.y * probe_offset;
+                    const double x_outside = x_midpoint + outward_normal.x * probe_offset;
+                    const double y_outside = y_midpoint + outward_normal.y * probe_offset;
+
+                    const double inside_refractive_index = get_refractive_index(x_inside, y_inside);
+                    const double outside_refractive_index = get_refractive_index(x_outside, y_outside);
+                    const double epsilon_jump_factor =
+                        jump_factor_from_indices(inside_refractive_index, outside_refractive_index);
+
+                    if (std::abs(epsilon_jump_factor) < 1e-8) {
+                        return;
+                    }
+
+                    boundary_segments.push_back(BoundarySegment{
+                        cell.id,
+                        x_midpoint,
+                        y_midpoint,
+                        length,
+                        outward_normal,
+                        inside_refractive_index,
+                        outside_refractive_index,
+                        epsilon_jump_factor});
+                };
+
+            if (i == 0) {
+                append_boundary_segment_if_needed(cell.cx - 0.5 * dx, cell.cy, Vector2{-1.0, 0.0}, dy);
+            }
+            if (i + 1 == discretization.Nx) {
+                append_boundary_segment_if_needed(cell.cx + 0.5 * dx, cell.cy, Vector2{1.0, 0.0}, dy);
+            }
+            if (j == 0) {
+                append_boundary_segment_if_needed(cell.cx, cell.cy - 0.5 * dy, Vector2{0.0, -1.0}, dx);
+            }
+            if (j + 1 == discretization.Ny) {
+                append_boundary_segment_if_needed(cell.cx, cell.cy + 0.5 * dy, Vector2{0.0, 1.0}, dx);
+            }
         }
     }
 }

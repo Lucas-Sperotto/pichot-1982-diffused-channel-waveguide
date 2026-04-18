@@ -40,11 +40,23 @@ struct Vector2 {
     double y;
 };
 
+struct BoundarySegment {
+    std::size_t cell_id;
+    double x_midpoint;
+    double y_midpoint;
+    double length;
+    Vector2 outward_normal;
+    double inside_refractive_index;
+    double outside_refractive_index;
+    double epsilon_jump_factor;
+};
+
 class Waveguide {
 public:
     Waveguide(const WaveguideParams& params, const Discretization& disc);
 
     const std::vector<Cell>& get_cells() const { return cells; }
+    const std::vector<BoundarySegment>& get_boundary_segments() const { return boundary_segments; }
     const WaveguideParams& get_params() const { return params; }
     double get_refractive_index(double x, double y) const;
     Vector2 get_regular_refractive_index_gradient(double x, double y) const;
@@ -56,6 +68,7 @@ private:
     WaveguideParams params;
     Discretization discretization;
     std::vector<Cell> cells;
+    std::vector<BoundarySegment> boundary_segments;
     std::function<double(double, double, const WaveguideParams&)> n_profile_func;
     std::function<Vector2(double, double, const WaveguideParams&)> n_gradient_func;
 };

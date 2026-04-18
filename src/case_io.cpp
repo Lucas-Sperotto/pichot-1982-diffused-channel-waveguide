@@ -142,8 +142,8 @@ void write_summary_file(const SimulationCase& sim_case,
     summary << "V_range: [" << sim_case.sweep.v_start << ", " << sim_case.sweep.v_end
             << "] step " << sim_case.sweep.v_step << "\n";
     summary << "notes: " << sim_case.notes << "\n";
-    summary << "solver_status: prototype_regular_grad_operator\n";
-    summary << "limitations: G^S e G^NS escalares ja estao implementadas no regime guiado com y >= 0 e y' >= 0; a montagem atual usa o termo (k^2-k3^2)G e a parte volumetrica regular de eps*grad(1/eps) multiplicando grad'G; o termo distribucional de fronteira da Eq. (4), a formulacao vetorial completa e a busca rigorosa por det(A)=0 ainda permanecem pendentes.\n";
+    summary << "solver_status: prototype_boundary_segments_operator\n";
+    summary << "limitations: G^S e G^NS escalares ja estao implementadas no regime guiado com y >= 0 e y' >= 0; a montagem atual usa o termo (k^2-k3^2)G, a parte volumetrica regular de eps*grad(1/eps) multiplicando grad'G e uma aproximacao explicita do termo de fronteira por segmentos da borda da malha; a formulacao vetorial completa, um tratamento mais rigoroso da singularidade/quadra da fronteira e a busca rigorosa por det(A)=0 ainda permanecem pendentes.\n";
 }
 
 } // namespace

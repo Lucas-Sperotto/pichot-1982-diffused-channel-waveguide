@@ -49,8 +49,9 @@ int main(int argc, char* argv[]) {
         std::cout << "Referência alvo: " << sim_case.article_figure
                   << " (" << sim_case.article_section << ")" << std::endl;
         std::cout << "Aviso: a busca modal usa um operador protótipo com o termo escalar"
-                  << " (k^2-k3^2)G e a parte volumétrica regular com grad'G,"
-                  << " ainda sem o termo distribucional de fronteira da formulação completa."
+                  << " (k^2-k3^2)G, a parte volumétrica regular com grad'G e um termo de fronteira"
+                  << " por segmentos explícitos; a formulação vetorial completa do artigo ainda não"
+                  << " está fechada."
                   << std::endl;
 
         WaveguideParams params = sim_case.waveguide;
