@@ -213,8 +213,8 @@ O artigo afirma que os modos correspondem aos zeros de $\det(A)$.
 
 O protótipo atual implementa isso em duas etapas operacionais:
 
-1. `find_beta_root` procura um candidato a $\beta$ minimizando $|\det(A)|$ em uma sequência de grades refinadas dentro do intervalo guiado;
-2. `refine_beta_with_modal_residual` reavalia uma vizinhança do candidato usando o residual modal
+1. `find_beta_root` procura um candidato a $\beta$ priorizando a quase-nulidade do operador, medida por `modal_residual`, em uma sequência de grades refinadas dentro do intervalo guiado;
+2. `refine_beta_with_modal_residual` reavalia uma vizinhança do candidato com o mesmo critério, mantendo $|\det(A)|$ como diagnóstico auxiliar.
 
 $$
 \frac{\|AX\|}{\|X\|}.
@@ -228,8 +228,8 @@ $$
 
 Na prática, isso significa que o código atual ainda não executa um localizador rigoroso de zeros exatos de $\det(A)$. Ele usa:
 
-- um mínimo de $|\det(A)|$ como estimativa inicial;
-- um refinamento por quase-nulidade do operador.
+- uma busca inicial guiada por quase-nulidade do operador;
+- $|\det(A)|$ como número auxiliar para comparar amostras e inspecionar diagnósticos.
 
 Esse compromisso já é suficiente para os testes de fumaça e para gerar curvas exploratórias, mas permanece uma pendência central da Fase 2.
 

@@ -42,7 +42,8 @@ struct ModeSolution {
 // - termo escalar (k^2 - k3^2) G;
 // - parte volumétrica regular de eps grad(1/eps) multiplicando grad'G;
 // - termo de fronteira isolado como soma explícita sobre segmentos da borda da malha;
-// - busca modal por mínimo de |det(A)|, ainda não pela formulação vetorial completa do artigo.
+// - busca modal guiada principalmente por quase-nulidade do operador (modal_residual),
+//   mantendo |det(A)| como diagnóstico auxiliar, ainda não pela formulação vetorial completa do artigo.
 void build_matrix_A(ComplexMatrix& A, double beta, const Waveguide& wg);
 void build_matrix_A(ComplexMatrix& A, double beta, const Waveguide& wg, const AssemblyOptions& options);
 Complex calculate_determinant(const ComplexMatrix& A);

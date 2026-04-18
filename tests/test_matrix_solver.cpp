@@ -206,23 +206,25 @@ void test_boundary_quadrature_models_are_distinct() {
             "Modelos distintos de quadratura de fronteira deveriam produzir matrizes distintas.");
 }
 
-void test_beta_search_reduces_determinant_residual() {
+void test_beta_search_reduces_modal_residual() {
     const Waveguide wg = make_small_homogeneous_waveguide();
     const double beta_min = wg.get_k0() * wg.get_params().n3;
     const double beta_max = wg.get_k0() * wg.get_params().n2m;
 
     const double beta_candidate = find_beta_root(wg, beta_min, beta_max);
-    const double residual_candidate = calculate_determinant_magnitude(beta_candidate, wg);
-    const double residual_left = calculate_determinant_magnitude(beta_min + 1e-6 * wg.get_k0(), wg);
-    const double residual_right = calculate_determinant_magnitude(beta_max - 1e-6 * wg.get_k0(), wg);
+    const ModeSolution solution_candidate = solve_mode_at_beta(beta_candidate, wg);
+    const ModeSolution solution_left = solve_mode_at_beta(beta_min + 1e-6 * wg.get_k0(), wg);
+    const ModeSolution solution_right = solve_mode_at_beta(beta_max - 1e-6 * wg.get_k0(), wg);
 
     require(beta_candidate > beta_min, "beta candidato deveria ficar dentro do intervalo guiado.");
     require(beta_candidate < beta_max, "beta candidato deveria ficar dentro do intervalo guiado.");
-    require(std::isfinite(residual_candidate), "O residual do determinante deveria ser finito.");
-    require(residual_candidate <= residual_left,
-            "A busca modal deveria melhorar ou igualar o residual do extremo esquerdo.");
-    require(residual_candidate <= residual_right,
-            "A busca modal deveria melhorar ou igualar o residual do extremo direito.");
+    require(std::isfinite(solution_candidate.modal_residual), "O residual modal deveria ser finito.");
+    require(std::isfinite(solution_candidate.determinant_magnitude),
+            "O determinante deve continuar disponível como diagnóstico.");
+    require(solution_candidate.modal_residual <= solution_left.modal_residual,
+            "A busca modal deveria melhorar ou igualar o residual modal do extremo esquerdo.");
+    require(solution_candidate.modal_residual <= solution_right.modal_residual,
+            "A busca modal deveria melhorar ou igualar o residual modal do extremo direito.");
 }
 
 void test_mode_solution_returns_finite_coefficients_and_residual() {
@@ -260,7 +262,7 @@ int main() {
     test_parabolic_profile_introduces_regular_grad_coupling();
     test_boundary_distribution_changes_homogeneous_operator();
     test_boundary_quadrature_models_are_distinct();
-    test_beta_search_reduces_determinant_residual();
+    test_beta_search_reduces_modal_residual();
     test_mode_solution_returns_finite_coefficients_and_residual();
     std::cout << "Matrix solver prototype checks passed." << std::endl;
     return 0;

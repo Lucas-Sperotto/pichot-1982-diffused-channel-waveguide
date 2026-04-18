@@ -288,8 +288,10 @@ int main(int argc, char* argv[]) {
                   << " (" << sim_case.article_section << ")" << std::endl;
         std::cout << "Aviso: a busca modal usa um operador protótipo com o termo escalar"
                   << " (k^2-k3^2)G, a parte volumétrica regular com grad'G e um termo de fronteira"
-                  << " por segmentos explícitos; o campo modal agora é estimado por menor singularidade,"
-                  << " mas a formulação vetorial completa do artigo ainda não está fechada."
+                  << " por segmentos explícitos; beta agora é escolhido prioritariamente por"
+                  << " modal_residual, mantendo |det(A)| como diagnóstico, e o campo modal"
+                  << " continua estimado por menor singularidade, mas a formulação vetorial"
+                  << " completa do artigo ainda não está fechada."
                   << std::endl;
         std::cout << "Quadratura de fronteira: "
                   << boundary_quadrature_model_to_cstr(sim_case.assembly_options.boundary_quadrature_model)

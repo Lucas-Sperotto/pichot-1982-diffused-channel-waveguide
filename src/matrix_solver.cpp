@@ -124,12 +124,50 @@ Complex evaluate_dG_dy_source_between_cells(const Cell& observation,
 }
 
 struct SearchSample {
-    double beta;
-    double residual;
+    double beta = 0.0;
+    double determinant_magnitude = std::numeric_limits<double>::infinity();
+    double modal_residual = std::numeric_limits<double>::infinity();
 };
 
 SearchSample evaluate_sample(double beta, const Waveguide& wg, const AssemblyOptions& options) {
-    return SearchSample{beta, calculate_determinant_magnitude(beta, wg, options)};
+    SearchSample sample;
+    sample.beta = beta;
+
+    try {
+        const ModeSolution solution = solve_mode_at_beta(beta, wg, options);
+        if (std::isfinite(solution.determinant_magnitude)) {
+            sample.determinant_magnitude = solution.determinant_magnitude;
+        }
+        if (std::isfinite(solution.modal_residual)) {
+            sample.modal_residual = solution.modal_residual;
+        }
+    } catch (const std::exception&) {
+        // Mantém infinito nos dois diagnósticos para marcar que a amostra falhou.
+    }
+
+    return sample;
+}
+
+bool is_better_search_sample(const SearchSample& lhs, const SearchSample& rhs) {
+    const bool lhs_modal_finite = std::isfinite(lhs.modal_residual);
+    const bool rhs_modal_finite = std::isfinite(rhs.modal_residual);
+    if (lhs_modal_finite != rhs_modal_finite) {
+        return lhs_modal_finite;
+    }
+    if (lhs.modal_residual != rhs.modal_residual) {
+        return lhs.modal_residual < rhs.modal_residual;
+    }
+
+    const bool lhs_det_finite = std::isfinite(lhs.determinant_magnitude);
+    const bool rhs_det_finite = std::isfinite(rhs.determinant_magnitude);
+    if (lhs_det_finite != rhs_det_finite) {
+        return lhs_det_finite;
+    }
+    if (lhs.determinant_magnitude != rhs.determinant_magnitude) {
+        return lhs.determinant_magnitude < rhs.determinant_magnitude;
+    }
+
+    return lhs.beta < rhs.beta;
 }
 
 double squared_norm(const std::vector<Complex>& values) {
@@ -285,7 +323,8 @@ SearchSample best_sample_in_grid(double left,
                                  const AssemblyOptions& options,
                                  double* next_left,
                                  double* next_right) {
-    SearchSample best{left, std::numeric_limits<double>::infinity()};
+    SearchSample best;
+    best.beta = left;
     std::vector<SearchSample> samples;
     samples.reserve(sample_count);
 
@@ -294,10 +333,9 @@ SearchSample best_sample_in_grid(double left,
         samples.push_back(evaluate_sample(left + alpha * (right - left), wg, options));
     }
 
-    auto best_it = std::min_element(
-        samples.begin(), samples.end(), [](const SearchSample& lhs, const SearchSample& rhs) {
-            return lhs.residual < rhs.residual;
-        });
+    auto best_it = std::min_element(samples.begin(), samples.end(), [](const SearchSample& lhs, const SearchSample& rhs) {
+        return is_better_search_sample(lhs, rhs);
+    });
     best = *best_it;
 
     const std::size_t best_index = static_cast<std::size_t>(best_it - samples.begin());
@@ -579,20 +617,18 @@ double refine_beta_with_modal_residual(double beta_initial,
         return beta_initial;
     }
 
-    double best_beta = beta_initial;
-    double best_residual = std::numeric_limits<double>::infinity();
+    SearchSample best_sample = evaluate_sample(beta_initial, wg, options);
     for (int index = 0; index < kModalRefinementSamples; ++index) {
         const double alpha = kModalRefinementSamples == 1
                                  ? 0.0
                                  : static_cast<double>(index) / (kModalRefinementSamples - 1);
         const double beta = left + alpha * (right - left);
-        const double residual = calculate_modal_residual(beta, wg, options);
-        if (residual < best_residual) {
-            best_residual = residual;
-            best_beta = beta;
+        const SearchSample candidate = evaluate_sample(beta, wg, options);
+        if (is_better_search_sample(candidate, best_sample)) {
+            best_sample = candidate;
         }
     }
-    return best_beta;
+    return best_sample.beta;
 }
 
 double find_beta_root(const Waveguide& wg, double beta_min, double beta_max) {
@@ -621,7 +657,7 @@ double find_beta_root(const Waveguide& wg,
     for (int iteration = 0; iteration < kRefinementIterations; ++iteration) {
         SearchSample refined = best_sample_in_grid(
             left, right, kRefinementSamples, wg, options, &next_left, &next_right);
-        if (refined.residual < best.residual) {
+        if (is_better_search_sample(refined, best)) {
             best = refined;
         }
         left = next_left;
