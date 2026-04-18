@@ -222,6 +222,14 @@ Esta escolha deve ser lida corretamente:
 - ela preserva a rastreabilidade do operador;
 - ela não deve ser confundida com o tratamento singular definitivo do artigo.
 
+Na implementação mais recente do protótipo, essa etapa já foi melhorada:
+
+- a média do próprio kernel na célula singular é feita por quadratura de Gauss 2x2 em subcélulas;
+- a média de $\partial_{x'}G$ na auto-interação é anulada por simetria da célula step em torno do centro;
+- a média de $\partial_{y'}G$ na auto-interação integra apenas a parte regular associada a $G_{NS}$, porque a parte singular de $G_S$ se anula por simetria.
+
+Esse tratamento ainda é uma regularização operacional, não a avaliação singular final do artigo, mas já é mais coerente com a interpretação de média sobre célula do que a antiga amostragem em quatro pontos.
+
 ## 12.6. Critério computacional para encontrar $\beta$
 
 O artigo afirma que os modos correspondem aos zeros de $\det(A)$.

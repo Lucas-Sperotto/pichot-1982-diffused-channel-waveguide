@@ -17,6 +17,7 @@ constexpr int kInverseIterations = 6;
 constexpr int kModalRefinementSamples = 3;
 
 constexpr double kGaussPoint = 0.5773502691896257;
+constexpr std::size_t kSelfCellGaussSubdivisionsPerAxis = 4;
 
 double get_background_k_squared(const Waveguide& wg) {
     const double k0 = wg.get_k0();
@@ -48,6 +49,32 @@ void accumulate_block(MatrixBlockContribution* total, const MatrixBlockContribut
     total->yy += increment.yy;
 }
 
+template <typename Integrand>
+Complex average_over_cell_with_subcell_gauss2(const Cell& source, Integrand integrand) {
+    const double sub_dx = source.dx / static_cast<double>(kSelfCellGaussSubdivisionsPerAxis);
+    const double sub_dy = source.dy / static_cast<double>(kSelfCellGaussSubdivisionsPerAxis);
+    const double half_sub_dx = 0.5 * sub_dx;
+    const double half_sub_dy = 0.5 * sub_dy;
+    Complex integral(0.0, 0.0);
+
+    for (std::size_t ix = 0; ix < kSelfCellGaussSubdivisionsPerAxis; ++ix) {
+        const double sub_center_x = source.cx - 0.5 * source.dx + (static_cast<double>(ix) + 0.5) * sub_dx;
+        for (std::size_t iy = 0; iy < kSelfCellGaussSubdivisionsPerAxis; ++iy) {
+            const double sub_center_y = source.cy - 0.5 * source.dy + (static_cast<double>(iy) + 0.5) * sub_dy;
+
+            for (double sx : {-1.0, 1.0}) {
+                for (double sy : {-1.0, 1.0}) {
+                    const double x_source = sub_center_x + sx * kGaussPoint * half_sub_dx;
+                    const double y_source = sub_center_y + sy * kGaussPoint * half_sub_dy;
+                    integral += integrand(x_source, y_source) * (half_sub_dx * half_sub_dy);
+                }
+            }
+        }
+    }
+
+    return integral / (source.dx * source.dy);
+}
+
 Complex evaluate_green_between_cells(const Cell& observation,
                                      const Cell& source,
                                      double beta,
@@ -57,24 +84,12 @@ Complex evaluate_green_between_cells(const Cell& observation,
     }
 
     // A auto-interação exige regularização da singularidade logarítmica de G^S.
-    // Nesta etapa usamos uma média em quatro subpontos dentro da célula fonte para
-    // manter o termo auditável e finito sem alegar uma quadratura exata do artigo.
-    const double x_offset = 0.25 * source.dx;
-    const double y_offset = 0.25 * source.dy;
-    Complex average(0.0, 0.0);
-
-    for (double sx : {-1.0, 1.0}) {
-        for (double sy : {-1.0, 1.0}) {
-            average += calculate_G(observation.cx,
-                                   observation.cy,
-                                   source.cx + sx * x_offset,
-                                   source.cy + sy * y_offset,
-                                   beta,
-                                   wg);
-        }
-    }
-
-    return average / 4.0;
+    // Em vez da antiga média em quatro pontos, usamos uma média de célula por
+    // subcélulas com quadratura de Gauss 2x2, que preserva a integral em toda a
+    // área da função-base step sem avaliar o kernel exatamente no ponto singular.
+    return average_over_cell_with_subcell_gauss2(source, [&](double x_source, double y_source) {
+        return calculate_G(observation.cx, observation.cy, x_source, y_source, beta, wg);
+    });
 }
 
 Complex evaluate_dG_dx_source_between_cells(const Cell& observation,
@@ -86,28 +101,9 @@ Complex evaluate_dG_dx_source_between_cells(const Cell& observation,
                calculate_dG_NS_dx_source(observation.cx, observation.cy, source.cx, source.cy, beta, wg);
     }
 
-    const double x_offset = 0.25 * source.dx;
-    const double y_offset = 0.25 * source.dy;
-    Complex average(0.0, 0.0);
-
-    for (double sx : {-1.0, 1.0}) {
-        for (double sy : {-1.0, 1.0}) {
-            average += calculate_dG_S_dx_source(observation.cx,
-                                                observation.cy,
-                                                source.cx + sx * x_offset,
-                                                source.cy + sy * y_offset,
-                                                beta,
-                                                wg) +
-                       calculate_dG_NS_dx_source(observation.cx,
-                                                 observation.cy,
-                                                 source.cx + sx * x_offset,
-                                                 source.cy + sy * y_offset,
-                                                 beta,
-                                                 wg);
-        }
-    }
-
-    return average / 4.0;
+    // Para célula-fonte coincidente com a célula de observação, a média do termo
+    // em x' se anula por simetria da função-base step em torno do centro da célula.
+    return Complex(0.0, 0.0);
 }
 
 Complex evaluate_dG_dy_source_between_cells(const Cell& observation,
@@ -119,28 +115,12 @@ Complex evaluate_dG_dy_source_between_cells(const Cell& observation,
                calculate_dG_NS_dy_source(observation.cx, observation.cy, source.cx, source.cy, beta, wg);
     }
 
-    const double x_offset = 0.25 * source.dx;
-    const double y_offset = 0.25 * source.dy;
-    Complex average(0.0, 0.0);
-
-    for (double sx : {-1.0, 1.0}) {
-        for (double sy : {-1.0, 1.0}) {
-            average += calculate_dG_S_dy_source(observation.cx,
-                                                observation.cy,
-                                                source.cx + sx * x_offset,
-                                                source.cy + sy * y_offset,
-                                                beta,
-                                                wg) +
-                       calculate_dG_NS_dy_source(observation.cx,
-                                                 observation.cy,
-                                                 source.cx + sx * x_offset,
-                                                 source.cy + sy * y_offset,
-                                                 beta,
-                                                 wg);
-        }
-    }
-
-    return average / 4.0;
+    // Na auto-interação, a parte singular G^S é ímpar em y' ao redor do centro da
+    // célula e sua média se anula por simetria. A parte G^NS é regular e pode ser
+    // integrada diretamente na célula pela mesma quadratura de subcélulas.
+    return average_over_cell_with_subcell_gauss2(source, [&](double x_source, double y_source) {
+        return calculate_dG_NS_dy_source(observation.cx, observation.cy, x_source, y_source, beta, wg);
+    });
 }
 
 KernelAverages evaluate_kernel_averages_between_cells(const Cell& observation,
