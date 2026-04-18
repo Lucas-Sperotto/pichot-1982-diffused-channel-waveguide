@@ -110,6 +110,11 @@ Nota editorial da Fase 3A:
   - `fig_02_integral_equation_metrics.json`;
   - `fig_02_integral_equation_overlay.png`.
 
+Nota editorial da Fase 3.1A:
+
+- cada execução do solver passa a salvar também `performance_summary.json`, com tempo de parede do solver e contadores de uso de `G_NS`, de seus ramos numéricos e das auto-interações regularizadas;
+- o benchmark reproduzível do lote das Figuras 2 a 6 passa a ser feito por `scripts/benchmark_figures_2_to_6.sh`.
+
 ## 3.2. Guia de canal homogêneo
 
 Mostra-se na Fig. 3 a comparação entre nossos resultados e aqueles obtidos por Yeh, Marcatili e pelo método do índice efetivo para o guia de canal homogêneo no modo $E^{y}_{11}$. Observa-se boa concordância entre a equação integral vetorial e os resultados de Yeh.
@@ -310,19 +315,23 @@ Este caso permanece como um elo entre a formulação do texto de `3.3.1` e a inf
 
 ### `tests/test_green_function.cpp`
 
-Este teste valida o núcleo de Green usado pelo protótipo atual. Ele é resolvido fora do fluxo de figuras: compila-se um executável de teste dedicado e verifica-se simetria, decaimento e coerência das derivadas em relação a diferenças finitas. O objetivo aqui não é reproduzir uma figura, mas garantir que a infraestrutura matemática elementar usada pela montagem permaneça auditável.
+Este teste valida o núcleo de Green usado pelo protótipo atual. Ele é resolvido fora do fluxo de figuras: compila-se um executável de teste dedicado e verifica-se simetria, decaimento, coerência das derivadas em relação a diferenças finitas, equivalência entre o bundle interno de `G_NS` e os wrappers escalares, além da instrumentação de ramos oscilatório e transformado. O objetivo aqui não é reproduzir uma figura, mas garantir que a infraestrutura matemática elementar usada pela montagem permaneça auditável.
 
 ### `tests/test_matrix_solver.cpp`
 
-Este teste valida a montagem e a busca modal do protótipo em matrizes pequenas. Ele é resolvido montando operadores para perfis homogêneos e parabólicos, conferindo desacoplamentos esperados, presença de acoplamentos regulares e de fronteira, diferença entre modelos de quadratura e finitude dos coeficientes modais encontrados. É o principal teste estrutural do solver nesta etapa.
+Este teste valida a montagem e a busca modal do protótipo em matrizes pequenas. Ele é resolvido montando operadores para perfis homogêneos e parabólicos, conferindo desacoplamentos esperados, presença de acoplamentos regulares e de fronteira, diferença entre modelos de quadratura, finitude dos coeficientes modais encontrados, coerência da média singular log-aware de $G^S$ e contagem dos caminhos compartilhados de `G_NS`. É o principal teste estrutural do solver nesta etapa.
 
 ### `tests/smoke_case_loading.sh`
 
-Este script é o teste de fumaça mais simples do repositório. Ele será resolvido compilando o projeto, executando o caso `smoke_homogeneous` em um diretório temporário e verificando a presença de `results.csv`, `profile_samples.csv`, `input_snapshot.json` e `run_summary.txt`, além dos cabeçalhos esperados.
+Este script é o teste de fumaça mais simples do repositório. Ele será resolvido compilando o projeto, executando o caso `smoke_homogeneous` em um diretório temporário e verificando a presença de `results.csv`, `profile_samples.csv`, `input_snapshot.json`, `run_summary.txt`, `output_manifest.json` e `performance_summary.json`, além dos cabeçalhos esperados.
 
 ### `tests/smoke_figures_csv_generation.sh`
 
-Este script é o teste de fumaça do lote principal das figuras. Ele será resolvido gerando as saídas das Figuras 2 a 6 a partir do `manifest_figures_2_to_6.csv`, executando novamente a Figura 5 pelo caminho padrão de `out/figures/` e checando tanto os arquivos esperados quanto os cabeçalhos e status registrados nos manifests de saída.
+Este script é o teste de fumaça do lote principal das figuras. Ele será resolvido gerando as saídas das Figuras 2 a 6 a partir do `manifest_figures_2_to_6.csv`, executando novamente a Figura 5 pelo caminho padrão de `out/figures/` e checando tanto os arquivos esperados quanto os cabeçalhos, os status registrados nos manifests de saída e os novos artefatos `performance_summary.json`.
+
+### `tests/smoke_benchmark_figures_2_to_6.sh`
+
+Este script é o teste de fumaça do benchmark oficial da Fase 3.1A. Ele será resolvido gerando um manifest reduzido das Figuras 2 a 6, executando `scripts/benchmark_figures_2_to_6.sh` e verificando a presença de `benchmark_cases.csv`, `benchmark_summary.json` e dos `performance_summary.json` esperados nas saídas por caso.
 
 ## 3.5. Leitura de fechamento da Fase 1
 

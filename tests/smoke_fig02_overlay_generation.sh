@@ -33,6 +33,7 @@ test -f "${OUTPUT_DIR}/dispersion_curve.csv"
 test -f "${OUTPUT_DIR}/fig_02_integral_equation_comparison.csv"
 test -f "${OUTPUT_DIR}/fig_02_integral_equation_metrics.json"
 test -f "${OUTPUT_DIR}/fig_02_integral_equation_overlay.png"
+test -f "${OUTPUT_DIR}/performance_summary.json"
 test -f "${ROOT_DIR}/data/reference/fig_02_integral_equation_digitized.csv"
 
 rg -q "^article_x_param,normalized_beta$" "${ROOT_DIR}/data/reference/fig_02_integral_equation_digitized.csv"
@@ -40,5 +41,7 @@ rg -q "^article_x_param,normalized_beta_simulation,normalized_beta_reference,abs
     "${OUTPUT_DIR}/fig_02_integral_equation_comparison.csv"
 rg -q '"reference_curve": "fig_02_integral_equation_digitized"' \
     "${OUTPUT_DIR}/fig_02_integral_equation_metrics.json"
+rg -q '"solver_wall_seconds"' "${OUTPUT_DIR}/performance_summary.json"
+rg -q '"oscillatory_branch_evaluations"' "${OUTPUT_DIR}/performance_summary.json"
 
 echo "Smoke test do overlay da Figura 2 concluído com sucesso em ${OUTPUT_DIR}"

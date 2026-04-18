@@ -33,8 +33,12 @@ test -f "${OUTPUT_DIR}/results.csv"
 test -f "${OUTPUT_DIR}/profile_samples.csv"
 test -f "${OUTPUT_DIR}/input_snapshot.json"
 test -f "${OUTPUT_DIR}/run_summary.txt"
+test -f "${OUTPUT_DIR}/output_manifest.json"
+test -f "${OUTPUT_DIR}/performance_summary.json"
 
 rg -q "^case_id,article_figure,target_mode,article_x_param,lambda0,beta,beta_over_k0,normalized_beta,det_abs,modal_residual$" "${OUTPUT_DIR}/results.csv"
 rg -q "^cell_id,x_center,y_center,dx,dy,refractive_index,k_squared$" "${OUTPUT_DIR}/profile_samples.csv"
+rg -q '"performance_summary_path"' "${OUTPUT_DIR}/output_manifest.json"
+rg -q '"solver_wall_seconds"' "${OUTPUT_DIR}/performance_summary.json"
 
 echo "Smoke test concluído com sucesso em ${OUTPUT_DIR}"

@@ -262,8 +262,8 @@ void write_summary_file(const SimulationCase& sim_case,
         summary << "field_map_component: " << sim_case.field_map.component << "\n";
     }
     summary << "notes: " << sim_case.notes << "\n";
-    summary << "solver_status: vector_integral_operator_with_det_search\n";
-    summary << "limitations: G^S e G^NS escalares ja estao implementadas no regime guiado com y >= 0 e y' >= 0; a montagem atual traduz a Eq. (3) e a Eq. (4) com funcoes-base step e colocacao, separando o termo (k^2-k3^2)G, a parte volumetrica regular de eps*grad(1/eps) multiplicando grad'G e a contribuicao distributiva de fronteira por segmentos explicitos; beta agora e localizado por minimizacao de |det(A)| no intervalo guiado e o residual modal fica apenas como diagnostico do vetor quase-nulo, mas um tratamento mais rigoroso da singularidade/quadratura da fronteira e a extensao alem de y >= 0 e y' >= 0 ainda permanecem pendentes.\n";
+    summary << "solver_status: vector_integral_operator_with_det_search_and_profiled_green_bundle\n";
+    summary << "limitations: G^S e G^NS continuam implementadas apenas no regime guiado com y >= 0 e y' >= 0; a montagem atual traduz a Eq. (3) e a Eq. (4) com funcoes-base step e colocacao, separando o termo (k^2-k3^2)G, a parte volumetrica regular de eps*grad(1/eps) multiplicando grad'G e a contribuicao distributiva de fronteira por segmentos explicitos; G_NS, dG_NS/dx' e dG_NS/dy' agora sao avaliados internamente em bloco e a media singular de G^S na auto-interacao usa quadratura log-aware por quadrantes, mas um tratamento mais rigoroso da singularidade/quadratura de fronteira, a convergencia de malha e a extensao alem de y >= 0 e y' >= 0 ainda permanecem pendentes.\n";
 }
 
 } // namespace

@@ -15,6 +15,12 @@ O objetivo é manter, na raiz do repositório, uma visão curta do que ainda pre
 
 ## 2. Pendências científico-numéricas para a Fase 2 em diante
 
+- [OK] Medir o custo do lote completo das Figuras 2 a 6 e registrar instrumentação de performance por caso.
+  Resultado desta etapa: `scripts/benchmark_figures_2_to_6.sh` agora produz `benchmark_cases.csv`, `benchmark_summary.json` e agrega os contadores de `G_NS`, ramos oscilatório/transformado e auto-interações regularizadas a partir de `performance_summary.json`.
+- [OK] Reduzir passes redundantes na avaliação de `G_NS`, `dG_NS/dx'` e `dG_NS/dy'`.
+  Resultado desta etapa: `src/green_function.cpp` passou a avaliar internamente o trio `G_NS`, `dG_NS/dx'` e `dG_NS/dy'` em bloco, e `src/matrix_solver.cpp` passou a reutilizar esse bundle tanto entre pares de células quanto na quadratura dos segmentos de fronteira.
+- [OK] Revisar a média singular de célula de `G^S` na auto-interação.
+  Resultado desta etapa: `src/matrix_solver.cpp` agora separa explicitamente a média singular de `G^S` por quadratura log-aware em quadrantes, preservando a anulação por simetria das derivadas singulares já assumida pelo protótipo.
 - [OK] Abrir uma trilha documental explícita entre as equações do artigo e os passos do código atual.
   Resultado desta revisão: `docs/12_trilha_equacoes_para_codigo.md` agora descreve a discretização de $\mathcal{D}_2$, as funções-base step, a montagem de `A`, a avaliação de `G = G_S + G_NS` e o critério operacional hoje usado para localizar $\beta$.
 - [ ] Melhorar a regularização e a quadratura da contribuição de fronteira.
@@ -24,7 +30,7 @@ O objetivo é manter, na raiz do repositório, uma visão curta do que ainda pre
 
 ## 3. Pendências operacionais de manutenção
 
-- [ ] Manter o `README.md` e os documentos de execução alinhados com o fluxo real baseado em `scripts/build.sh`, `scripts/run_case.sh` e `scripts/generate_figures_2_to_6_csvs.sh`.
+- [ ] Manter o `README.md` e os documentos de execução alinhados com o fluxo real baseado em `scripts/build.sh`, `scripts/run_case.sh`, `scripts/generate_figures_2_to_6_csvs.sh` e `scripts/benchmark_figures_2_to_6.sh`.
 - [ ] Reavaliar periodicamente os testes de fumaça quando o contrato de saída (`results.csv`, `dispersion_curve.csv`, `field_map.csv`, `output_manifest.json`) mudar.
 
 ## 4. Leitura rápida do status da Fase 2

@@ -1,8 +1,9 @@
-#include "matrix_solver.h"
+#include "matrix_solver_internal.h"
 
-#include "green_function.h"
+#include "green_function_internal.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -19,6 +20,22 @@ constexpr double kGoldenSectionRatio = 0.6180339887498949;
 
 constexpr double kGaussPoint = 0.5773502691896257;
 constexpr std::size_t kSelfCellGaussSubdivisionsPerAxis = 4;
+constexpr std::array<double, 6> kGaussLegendreNodes01{
+    0.03376524289842397,
+    0.16939530676686776,
+    0.38069040695840156,
+    0.6193095930415985,
+    0.8306046932331322,
+    0.966234757101576};
+constexpr std::array<double, 6> kGaussLegendreWeights01{
+    0.08566224618958517,
+    0.18038078652406947,
+    0.23395696728634552,
+    0.23395696728634552,
+    0.18038078652406947,
+    0.08566224618958517};
+
+MatrixSolverPerformanceStats g_matrix_solver_stats;
 
 enum class FieldComponent {
     EX,
@@ -106,62 +123,95 @@ Complex average_over_cell_with_subcell_gauss2(const Cell& source, Integrand inte
     return integral / (source.dx * source.dy);
 }
 
-Complex evaluate_green_between_cells(const Cell& observation,
-                                     const Cell& source,
-                                     double beta,
-                                     const Waveguide& wg) {
-    if (observation.id != source.id) {
-        return calculate_G(observation.cx, observation.cy, source.cx, source.cy, beta, wg);
+template <typename Integrand>
+Complex integrate_self_cell_quadrant_with_duffy(const Cell& cell, Integrand integrand, bool swap_axes) {
+    const double half_dx = 0.5 * cell.dx;
+    const double half_dy = 0.5 * cell.dy;
+    Complex integral(0.0, 0.0);
+
+    for (std::size_t iu = 0; iu < kGaussLegendreNodes01.size(); ++iu) {
+        const double u = kGaussLegendreNodes01[iu];
+        const double wu = kGaussLegendreWeights01[iu];
+        for (std::size_t iv = 0; iv < kGaussLegendreNodes01.size(); ++iv) {
+            const double v = kGaussLegendreNodes01[iv];
+            const double wv = kGaussLegendreWeights01[iv];
+            const double dx_offset = swap_axes ? half_dx * u * v : half_dx * u;
+            const double dy_offset = swap_axes ? half_dy * u : half_dy * u * v;
+            const double jacobian = half_dx * half_dy * u;
+            integral += wu * wv * jacobian * integrand(dx_offset, dy_offset);
+        }
     }
 
-    // A auto-interação exige regularização da singularidade logarítmica de G^S.
-    // Em vez da antiga média em quatro pontos, usamos uma média de célula por
-    // subcélulas com quadratura de Gauss 2x2, que preserva a integral em toda a
-    // área da função-base step sem avaliar o kernel exatamente no ponto singular.
-    return average_over_cell_with_subcell_gauss2(source, [&](double x_source, double y_source) {
-        return calculate_G(observation.cx, observation.cy, x_source, y_source, beta, wg);
-    });
+    return integral;
 }
 
-Complex evaluate_dG_dx_source_between_cells(const Cell& observation,
-                                            const Cell& source,
-                                            double beta,
-                                            const Waveguide& wg) {
-    if (observation.id != source.id) {
-        return calculate_dG_S_dx_source(observation.cx, observation.cy, source.cx, source.cy, beta, wg) +
-               calculate_dG_NS_dx_source(observation.cx, observation.cy, source.cx, source.cy, beta, wg);
+GreenFunctionNonSingularBundle average_ns_bundle_over_cell_with_subcell_gauss2(const Cell& observation,
+                                                                               const Cell& source,
+                                                                               double beta,
+                                                                               const Waveguide& wg) {
+    const double sub_dx = source.dx / static_cast<double>(kSelfCellGaussSubdivisionsPerAxis);
+    const double sub_dy = source.dy / static_cast<double>(kSelfCellGaussSubdivisionsPerAxis);
+    const double half_sub_dx = 0.5 * sub_dx;
+    const double half_sub_dy = 0.5 * sub_dy;
+    Complex value_integral(0.0, 0.0);
+    Complex dx_integral(0.0, 0.0);
+    Complex dy_integral(0.0, 0.0);
+
+    for (std::size_t ix = 0; ix < kSelfCellGaussSubdivisionsPerAxis; ++ix) {
+        const double sub_center_x = source.cx - 0.5 * source.dx + (static_cast<double>(ix) + 0.5) * sub_dx;
+        for (std::size_t iy = 0; iy < kSelfCellGaussSubdivisionsPerAxis; ++iy) {
+            const double sub_center_y = source.cy - 0.5 * source.dy + (static_cast<double>(iy) + 0.5) * sub_dy;
+
+            for (double sx : {-1.0, 1.0}) {
+                for (double sy : {-1.0, 1.0}) {
+                    const double x_source = sub_center_x + sx * kGaussPoint * half_sub_dx;
+                    const double y_source = sub_center_y + sy * kGaussPoint * half_sub_dy;
+                    const GreenFunctionNonSingularBundle bundle = calculate_G_NS_bundle_internal(
+                        observation.cx, observation.cy, x_source, y_source, beta, wg);
+                    const double weight = half_sub_dx * half_sub_dy;
+                    value_integral += bundle.value * weight;
+                    dx_integral += bundle.d_dx_source * weight;
+                    dy_integral += bundle.d_dy_source * weight;
+                }
+            }
+        }
     }
 
-    // Para célula-fonte coincidente com a célula de observação, a média do termo
-    // em x' se anula por simetria da função-base step em torno do centro da célula.
-    return Complex(0.0, 0.0);
-}
-
-Complex evaluate_dG_dy_source_between_cells(const Cell& observation,
-                                            const Cell& source,
-                                            double beta,
-                                            const Waveguide& wg) {
-    if (observation.id != source.id) {
-        return calculate_dG_S_dy_source(observation.cx, observation.cy, source.cx, source.cy, beta, wg) +
-               calculate_dG_NS_dy_source(observation.cx, observation.cy, source.cx, source.cy, beta, wg);
-    }
-
-    // Na auto-interação, a parte singular G^S é ímpar em y' ao redor do centro da
-    // célula e sua média se anula por simetria. A parte G^NS é regular e pode ser
-    // integrada diretamente na célula pela mesma quadratura de subcélulas.
-    return average_over_cell_with_subcell_gauss2(source, [&](double x_source, double y_source) {
-        return calculate_dG_NS_dy_source(observation.cx, observation.cy, x_source, y_source, beta, wg);
-    });
+    const double normalization = source.dx * source.dy;
+    return GreenFunctionNonSingularBundle{
+        value_integral / normalization,
+        dx_integral / normalization,
+        dy_integral / normalization};
 }
 
 KernelAverages evaluate_kernel_averages_between_cells(const Cell& observation,
                                                       const Cell& source,
                                                       double beta,
                                                       const Waveguide& wg) {
+    if (observation.id != source.id) {
+        ++g_matrix_solver_stats.shared_volume_bundle_evaluations;
+        const GreenFunctionNonSingularBundle regular_bundle =
+            calculate_G_NS_bundle_internal(observation.cx, observation.cy, source.cx, source.cy, beta, wg);
+        return KernelAverages{
+            calculate_G_S(observation.cx, observation.cy, source.cx, source.cy, beta, wg) + regular_bundle.value,
+            calculate_dG_S_dx_source(observation.cx, observation.cy, source.cx, source.cy, beta, wg) +
+                regular_bundle.d_dx_source,
+            calculate_dG_S_dy_source(observation.cx, observation.cy, source.cx, source.cy, beta, wg) +
+                regular_bundle.d_dy_source};
+    }
+
+    ++g_matrix_solver_stats.self_green_regularizations;
+    ++g_matrix_solver_stats.self_dy_regularizations;
+    const GreenFunctionNonSingularBundle regular_bundle =
+        average_ns_bundle_over_cell_with_subcell_gauss2(observation, source, beta, wg);
+
+    // Na auto-interação, só a média singular de G^S precisa de quadratura
+    // log-aware; as derivadas singulares permanecem anuladas pelas simetrias já
+    // documentadas do protótipo.
     return KernelAverages{
-        evaluate_green_between_cells(observation, source, beta, wg),
-        evaluate_dG_dx_source_between_cells(observation, source, beta, wg),
-        evaluate_dG_dy_source_between_cells(observation, source, beta, wg)};
+        calculate_self_cell_green_singular_average(source, beta, wg) + regular_bundle.value,
+        Complex(0.0, 0.0),
+        regular_bundle.d_dy_source};
 }
 
 MatrixBlockContribution make_identity_contribution(bool is_diagonal) {
@@ -227,12 +277,15 @@ MatrixBlockContribution make_boundary_segment_contribution(const Cell& observati
         auto accumulate_boundary_sample = [&](double local_coordinate, double weight) {
             const double x_source = segment.x_midpoint + local_coordinate * tangent.x;
             const double y_source = segment.y_midpoint + local_coordinate * tangent.y;
+            ++g_matrix_solver_stats.shared_boundary_bundle_evaluations;
+            const GreenFunctionNonSingularBundle regular_bundle =
+                calculate_G_NS_bundle_internal(observation.cx, observation.cy, x_source, y_source, beta, wg);
             integrated_dG_dx_boundary +=
                 weight * (calculate_dG_S_dx_source(observation.cx, observation.cy, x_source, y_source, beta, wg) +
-                          calculate_dG_NS_dx_source(observation.cx, observation.cy, x_source, y_source, beta, wg));
+                          regular_bundle.d_dx_source);
             integrated_dG_dy_boundary +=
                 weight * (calculate_dG_S_dy_source(observation.cx, observation.cy, x_source, y_source, beta, wg) +
-                          calculate_dG_NS_dy_source(observation.cx, observation.cy, x_source, y_source, beta, wg));
+                          regular_bundle.d_dy_source);
         };
 
         if (options.boundary_quadrature_model == BoundaryQuadratureModel::MIDPOINT) {
@@ -560,6 +613,27 @@ SearchSample refine_sample_with_determinant(double beta_initial,
 }
 
 } // namespace
+
+Complex calculate_self_cell_green_singular_average(const Cell& cell,
+                                                   double beta,
+                                                   const Waveguide& wg) {
+    ++g_matrix_solver_stats.self_green_singular_log_quadratures;
+    const auto integrand = [&](double dx_offset, double dy_offset) {
+        return calculate_G_S(cell.cx, cell.cy, cell.cx + dx_offset, cell.cy + dy_offset, beta, wg);
+    };
+
+    const Complex first_triangle = integrate_self_cell_quadrant_with_duffy(cell, integrand, false);
+    const Complex second_triangle = integrate_self_cell_quadrant_with_duffy(cell, integrand, true);
+    return (4.0 / (cell.dx * cell.dy)) * (first_triangle + second_triangle);
+}
+
+MatrixSolverPerformanceStats get_matrix_solver_performance_stats() {
+    return g_matrix_solver_stats;
+}
+
+void reset_matrix_solver_performance_stats() {
+    g_matrix_solver_stats = MatrixSolverPerformanceStats{};
+}
 
 const char* boundary_quadrature_model_to_cstr(BoundaryQuadratureModel model) {
     switch (model) {

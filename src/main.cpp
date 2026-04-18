@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -8,7 +9,9 @@
 #include <vector>
 
 #include "case_io.h"
+#include "green_function_internal.h"
 #include "matrix_solver.h"
+#include "matrix_solver_internal.h"
 #include "waveguide.h"
 
 namespace {
@@ -61,6 +64,7 @@ void write_output_manifest(const SimulationCase& sim_case, const std::filesystem
     manifest << "  \"canonical_csv_path\": \"" << (output_path / sim_case.output.canonical_csv_name).string() << "\",\n";
     manifest << "  \"results_csv_path\": \"" << (output_path / "results.csv").string() << "\",\n";
     manifest << "  \"profile_samples_path\": \"" << (output_path / "profile_samples.csv").string() << "\",\n";
+    manifest << "  \"performance_summary_path\": \"" << (output_path / "performance_summary.json").string() << "\",\n";
     manifest << "  \"status\": \"" << status << "\"\n";
     manifest << "}\n";
 }
@@ -267,6 +271,44 @@ void write_field_map_grid(const SimulationCase& sim_case,
     status_file << "modal_residual: " << modal_residual << "\n";
 }
 
+void write_performance_summary(const SimulationCase& sim_case,
+                               const std::filesystem::path& output_path,
+                               double solver_wall_seconds) {
+    const GreenFunctionPerformanceStats green_stats = get_green_function_performance_stats();
+    const MatrixSolverPerformanceStats matrix_stats = get_matrix_solver_performance_stats();
+
+    std::ofstream summary_file(output_path / "performance_summary.json");
+    if (!summary_file) {
+        throw std::runtime_error("Não foi possível criar performance_summary.json.");
+    }
+
+    summary_file << std::setprecision(16);
+    summary_file << "{\n";
+    summary_file << "  \"case_id\": \"" << sim_case.case_id << "\",\n";
+    summary_file << "  \"study_kind\": \"" << study_kind_to_string(sim_case.study_kind) << "\",\n";
+    summary_file << "  \"solver_wall_seconds\": " << solver_wall_seconds << ",\n";
+    summary_file << "  \"green_function\": {\n";
+    summary_file << "    \"g_ns_value_requests\": " << green_stats.g_ns_value_requests << ",\n";
+    summary_file << "    \"g_ns_dx_requests\": " << green_stats.g_ns_dx_requests << ",\n";
+    summary_file << "    \"g_ns_dy_requests\": " << green_stats.g_ns_dy_requests << ",\n";
+    summary_file << "    \"g_ns_bundle_evaluations\": " << green_stats.g_ns_bundle_evaluations << ",\n";
+    summary_file << "    \"oscillatory_branch_evaluations\": " << green_stats.oscillatory_branch_evaluations << ",\n";
+    summary_file << "    \"transformed_branch_evaluations\": " << green_stats.transformed_branch_evaluations
+                 << "\n";
+    summary_file << "  },\n";
+    summary_file << "  \"matrix_solver\": {\n";
+    summary_file << "    \"shared_volume_bundle_evaluations\": " << matrix_stats.shared_volume_bundle_evaluations
+                 << ",\n";
+    summary_file << "    \"shared_boundary_bundle_evaluations\": "
+                 << matrix_stats.shared_boundary_bundle_evaluations << ",\n";
+    summary_file << "    \"self_green_regularizations\": " << matrix_stats.self_green_regularizations << ",\n";
+    summary_file << "    \"self_green_singular_log_quadratures\": "
+                 << matrix_stats.self_green_singular_log_quadratures << ",\n";
+    summary_file << "    \"self_dy_regularizations\": " << matrix_stats.self_dy_regularizations << "\n";
+    summary_file << "  }\n";
+    summary_file << "}\n";
+}
+
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -303,6 +345,9 @@ int main(int argc, char* argv[]) {
         const std::filesystem::path output_path(output_dir);
 
         bool profile_written = false;
+        reset_green_function_performance_stats();
+        reset_matrix_solver_performance_stats();
+        const auto solver_start = std::chrono::steady_clock::now();
 
         if (sim_case.study_kind == StudyKind::FIELD_MAP) {
             params.lambda0 = sim_case.field_map.lambda0;
@@ -388,6 +433,10 @@ int main(int argc, char* argv[]) {
             outfile.close();
             copy_file_to_if_different(canonical_csv_path, output_path / "results.csv");
         }
+
+        const double solver_wall_seconds =
+            std::chrono::duration<double>(std::chrono::steady_clock::now() - solver_start).count();
+        write_performance_summary(sim_case, output_path, solver_wall_seconds);
 
         std::cout << "Simulação concluída. Resultados em " << (output_path / "results.csv") << std::endl;
         return 0;

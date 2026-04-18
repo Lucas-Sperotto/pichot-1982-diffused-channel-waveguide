@@ -22,7 +22,7 @@ Nesta fase, um primeiro solver funcional foi desenvolvido, capaz de gerar os art
 
 - **Discretização e Base:** Implementação do Método dos Momentos com funções-base do tipo "step" (constantes por célula) e testes por colocação, conforme descrito no artigo.
 - **Núcleo de Green:** Implementação da função de Green para o meio estratificado, separando as contribuições singular e não singular.
-- **Montagem da Matriz:** Desenvolvimento de um montador de matriz que inclui os termos escalar, de gradiente regular e de fronteira, ainda que de forma aproximada (operador híbrido).
+- **Montagem da Matriz:** Desenvolvimento de um montador de matriz com tradução vetorial explícita dos termos escalar, regular e de fronteira, depois consolidada e auditada na Fase 3.
 - **Busca Modal e Reconstrução:** Implementação de uma busca modal baseada na minimização do residual do operador e reconstrução de campos a partir dos coeficientes do vetor modal.
 
 *A trilha detalhada das equações do artigo para o código do protótipo está em `docs/12_trilha_equacoes_para_codigo.md`.*
@@ -38,10 +38,13 @@ Esta é a fase atual do projeto. O foco é transformar os resultados do protóti
 - A busca de `beta` deixou de ser guiada por `modal_residual` e passou a priorizar `|det(A)|`, mantendo o residual modal apenas como diagnóstico do vetor modal estimado.
 - A Figura 2 passou a ter uma validação reproduzível inicial contra a curva "integral equation" digitizada do artigo, com artefatos automáticos de comparação, métricas e gráfico overlay.
 
-**3.1. Estabilização Numérica do Protótipo**
-- [ ] Consolidar a nova quadratura oscilatória de `G_NS` e medir seu custo computacional no lote das Figuras 2 a 6.
-- [ ] Reduzir o custo da avaliação de `G_NS`, `dG_NS/dx'` e `dG_NS/dy'` sem perder consistência com os testes de Green.
-- [ ] Revisar o tratamento singular remanescente de `G^S` para aproximar a média de célula do comportamento integral esperado pelo artigo.
+**3.1. Estabilização Numérica do Protótipo (✅ marco 3.1A implementado)**
+- [OK] Consolidar a nova quadratura oscilatória de `G_NS` e medir seu custo computacional no lote das Figuras 2 a 6.
+  Resultado desta etapa: `scripts/benchmark_figures_2_to_6.sh` passou a executar o manifest científico completo, gravando `benchmark_cases.csv`, `benchmark_summary.json` e um `performance_summary.json` por caso em `out/benchmarks/...`.
+- [OK] Reduzir o custo da avaliação de `G_NS`, `dG_NS/dx'` e `dG_NS/dy'` sem perder consistência com os testes de Green.
+  Resultado desta etapa: `src/green_function.cpp` agora usa um avaliador interno em bloco para `G_NS`, `dG_NS/dx'` e `dG_NS/dy'`, compartilhando por amostra de quadratura os termos `gamma_1`, `gamma_3`, o coeficiente de reflexão, o envelope exponencial e a fase trigonométrica; `src/matrix_solver.cpp` passou a reutilizar esse bundle tanto no volume quanto na integração de fronteira.
+- [OK] Revisar o tratamento singular remanescente de `G^S` para aproximar a média de célula do comportamento integral esperado pelo artigo.
+  Resultado desta etapa: a auto-interação de `G^S` deixou de usar apenas a média regularizada por subcélulas e passou a separar explicitamente a parte singular por uma quadratura simétrica por quadrantes com mapeamento tipo Duffy/log-aware, mantendo `G_NS` como parte regular integrada numericamente na célula.
 
 **3.2. Finalização da Formulação Vetorial**
 - [OK] Fechar a tradução vetorial explícita do termo `grad' G` da equação integral (3) na discretização atual com base `step` e colocação.

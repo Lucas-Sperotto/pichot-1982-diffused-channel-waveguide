@@ -102,13 +102,15 @@ $$
 O tratamento computacional atual é:
 
 - `calculate_G_S`: usa a forma fechada com a função de Bessel modificada $K_0$;
-- `calculate_G_NS`: quando $x \neq x'$, avalia a integral de Fourier por quadratura oscilatória direta no domínio de $\nu$, em blocos finitos com Simpson adaptativo; no caso praticamente não oscilatório, preserva a integração transformada em $t \in [0,1)$;
+- `calculate_G_NS`: preserva os dois regimes numéricos já adotados, isto é, quadratura oscilatória direta no domínio de $\nu$ quando $x \neq x'$ e integração transformada em $t \in [0,1)$ no caso praticamente não oscilatório;
 - `calculate_dG_S_dx_source` e `calculate_dG_S_dy_source`: usam derivadas analíticas da parte singular com $K_1$;
-- `calculate_dG_NS_dx_source` e `calculate_dG_NS_dy_source`: derivam diretamente a expressão integral de `G_NS` sob o sinal de integral e usam a mesma quadratura oscilatória direta quando há fase não trivial.
+- `calculate_dG_NS_dx_source` e `calculate_dG_NS_dy_source`: derivam diretamente a expressão integral de `G_NS` sob o sinal de integral;
+- internamente, `G_NS`, `dG_NS/dx'` e `dG_NS/dy'` agora são avaliados em bloco por um helper compartilhado, reaproveitando por amostra de quadratura os mesmos valores de $\gamma_1$, $\gamma_3$, do coeficiente de reflexão, do envelope exponencial e da fase trigonométrica.
 
 Isto preserva a decomposição do artigo, mas ainda não fecha toda a parte numérica com o mesmo rigor teórico do texto original. Em particular:
 
-- a singularidade logarítmica de $G_S$ ainda não recebe uma quadratura analítica exata ao nível de célula.
+- a regularização singular de fronteira ainda não foi fechada com o mesmo cuidado já aplicado à auto-interação em célula;
+- a implementação continua restrita ao regime hoje usado, com $y \ge 0$ e $y' \ge 0$.
 
 ## 12.5. Montagem da matriz do método dos momentos
 
@@ -213,7 +215,7 @@ O método numérico escolhido para este bloco é uma quadratura de linha por seg
 
 ### 12.5.4. Auto-interação e regularização local
 
-Quando a célula de observação coincide com a célula-fonte, o termo singular de $G_S$ não pode ser avaliado no mesmo ponto. O protótipo atual resolve isso por uma média de célula regularizada, hoje implementada por quadratura de Gauss 2x2 em subcélulas.
+Quando a célula de observação coincide com a célula-fonte, o termo singular de $G_S$ não pode ser avaliado no mesmo ponto. A regularização atual separa explicitamente a parte singular de $G_S$ da parte regular associada a $G_{NS}$.
 
 Esta escolha deve ser lida corretamente:
 
@@ -221,13 +223,14 @@ Esta escolha deve ser lida corretamente:
 - ela preserva a rastreabilidade do operador;
 - ela não deve ser confundida com o tratamento singular definitivo do artigo.
 
-Na implementação mais recente do protótipo, essa etapa já foi melhorada:
+Na implementação mais recente do protótipo, essa etapa passou a ser tratada assim:
 
-- a média do próprio kernel na célula singular é feita por quadratura de Gauss 2x2 em subcélulas;
+- a média singular de $G_S$ na célula coincidente usa uma quadratura simétrica por quadrantes com mapeamento tipo Duffy/log-aware sobre o retângulo centrado da célula;
+- a média regular associada a $G_{NS}$ continua sendo integrada numericamente por subcélulas com Gauss 2x2, evitando avaliar o kernel no ponto singular;
 - a média de $\partial_{x'}G$ na auto-interação é anulada por simetria da célula step em torno do centro;
 - a média de $\partial_{y'}G$ na auto-interação integra apenas a parte regular associada a $G_{NS}$, porque a parte singular de $G_S$ se anula por simetria.
 
-Esse tratamento ainda é uma regularização operacional, não a avaliação singular final do artigo, mas já é mais coerente com a interpretação de média sobre célula do que a antiga amostragem em quatro pontos.
+Esse tratamento ainda é uma regularização operacional, não a avaliação singular final do artigo, mas já é mais coerente com a interpretação de média sobre célula do que a antiga média uniforme por subcélulas aplicada ao kernel completo.
 
 ### 12.5.5. Nota editorial da Fase 3A
 
@@ -242,9 +245,16 @@ A Fase 3A fecha a tradução operacional da Eq. (3) e da Eq. (4) no seguinte sen
 
 As ambiguidades que permanecem abertas, e portanto não devem ser "corrigidas" por palpite, são:
 
-- o tratamento singular final exato ao nível de célula para $G_S$;
+- o tratamento singular final exato ao nível de célula para $G_S$ além da regularização log-aware hoje adotada;
 - a forma exata do funcional de teste implícito no artigo além da colocação operacional hoje adotada;
 - a extensão da implementação para além do regime hoje usado, com $y \ge 0$ e $y' \ge 0$.
+
+### 12.5.6. Nota editorial da Fase 3.1A
+
+O marco 3.1A acrescenta duas decisões numéricas importantes, ainda conservadoras do ponto de vista científico:
+
+- o solver passa a evitar passes redundantes na parte regular de Green, avaliando `G_NS`, `dG_NS/dx'` e `dG_NS/dy'` em bloco e reutilizando esse bundle tanto na interação entre células distintas quanto na integração dos segmentos de fronteira;
+- a auto-interação separa explicitamente a média singular de $G_S$ da média regular de $G_{NS}$, em vez de tratar o kernel completo por uma única média uniforme de subcélulas.
 
 ## 12.6. Critério computacional para encontrar $\beta$
 
@@ -316,6 +326,11 @@ Para a Figura 2, a Fase 3A acrescenta ainda uma etapa de pós-processamento repr
 - grava-se `fig_02_integral_equation_metrics.json`;
 - gera-se `fig_02_integral_equation_overlay.png`.
 
+Além disso, toda execução do solver passa a salvar também:
+
+- `performance_summary.json`, com tempo de parede do solver e contadores de uso de `G_NS`, de seus ramos oscilatório/transformado e das auto-interações regularizadas;
+- `output_manifest.json`, agora apontando explicitamente para esse resumo de performance.
+
 Como as funções-base são do tipo step, o aumento de `Nx` e `Ny` é a forma direta de refinar a aproximação espacial. A conferência de que essa conversão de abcissa coincide exatamente com cada figura do artigo permanece parte da validação científica posterior.
 
 ### 12.8.2. Casos `field_map`
@@ -343,14 +358,15 @@ Como a base é step, a reconstrução espacial atual é peça-por-peça constant
 | Eq. (8) | sistema homogêneo do método dos momentos | `ComplexMatrix`, `build_matrix_A`, `ModeSolution` |
 | zeros de $\det(A)$ | critério modal em $\beta$ | `find_beta_root` e `refine_beta_with_determinant` |
 | reconstrução de campo | obtenção de $\mathbf{E}(x,y)$ a partir de $X$ | `write_mode_coefficients` e `write_field_map_grid` |
+| instrumentação de custo | medição por caso e benchmark do lote | `performance_summary.json` + `scripts/benchmark_figures_2_to_6.sh` |
 
 ## 12.10. O que ainda falta para fechar a Fase 2
 
 Os próximos fechamentos desejáveis já ficaram claros a partir desta trilha:
 
 - confirmar, no nível do artigo, se a etapa de teste é melhor descrita como colocação direta nos centros ou se há outro funcional de teste implícito;
-- substituir a regularização local por quadratura de célula por um tratamento singular mais rigoroso;
-- reduzir o custo da quadratura oscilatória de `G_NS` sem perder consistência com o cálculo direto atual das derivadas;
+- revisar o tratamento singular de fronteira com o mesmo nível de cuidado já aplicado à auto-interação volumétrica;
+- explorar novos ganhos de custo em `G_NS` além do compartilhamento interno já implementado, sem perder consistência com o cálculo direto atual das derivadas;
 - estender a validação quantitativa iniciada na Figura 2 para as Figuras 3, 4 e 6, com referências digitizadas adicionais;
 - documentar, figura por figura, a convergência em malha exigida para chamar a reprodução de quantitativamente fechada.
 

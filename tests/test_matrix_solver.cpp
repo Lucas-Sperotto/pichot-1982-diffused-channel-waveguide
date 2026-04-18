@@ -3,7 +3,10 @@
 #include <limits>
 #include <stdexcept>
 
+#include "green_function.h"
+#include "green_function_internal.h"
 #include "matrix_solver.h"
+#include "matrix_solver_internal.h"
 #include "waveguide.h"
 
 namespace {
@@ -12,6 +15,40 @@ void require(bool condition, const std::string& message) {
     if (!condition) {
         throw std::runtime_error(message);
     }
+}
+
+bool nearly_equal_complex(Complex a, Complex b, double absolute_tolerance, double relative_tolerance) {
+    const double scale = std::max(std::abs(a), std::abs(b));
+    return std::abs(a - b) <= absolute_tolerance + relative_tolerance * scale;
+}
+
+Complex reference_self_cell_green_singular_average(const Cell& cell,
+                                                   double beta,
+                                                   const Waveguide& wg,
+                                                   std::size_t subdivisions_per_axis) {
+    const double sub_dx = cell.dx / static_cast<double>(subdivisions_per_axis);
+    const double sub_dy = cell.dy / static_cast<double>(subdivisions_per_axis);
+    const double half_sub_dx = 0.5 * sub_dx;
+    const double half_sub_dy = 0.5 * sub_dy;
+    constexpr double gauss_point = 0.5773502691896257;
+    Complex integral(0.0, 0.0);
+
+    for (std::size_t ix = 0; ix < subdivisions_per_axis; ++ix) {
+        const double sub_center_x = cell.cx - 0.5 * cell.dx + (static_cast<double>(ix) + 0.5) * sub_dx;
+        for (std::size_t iy = 0; iy < subdivisions_per_axis; ++iy) {
+            const double sub_center_y = cell.cy - 0.5 * cell.dy + (static_cast<double>(iy) + 0.5) * sub_dy;
+            for (double sx : {-1.0, 1.0}) {
+                for (double sy : {-1.0, 1.0}) {
+                    const double x_source = sub_center_x + sx * gauss_point * half_sub_dx;
+                    const double y_source = sub_center_y + sy * gauss_point * half_sub_dy;
+                    integral += calculate_G_S(cell.cx, cell.cy, x_source, y_source, beta, wg) *
+                                (half_sub_dx * half_sub_dy);
+                }
+            }
+        }
+    }
+
+    return integral / (cell.dx * cell.dy);
 }
 
 Waveguide make_small_homogeneous_waveguide() {
@@ -329,6 +366,49 @@ void test_mode_solution_returns_finite_coefficients_and_residual() {
     require(max_amplitude > 0.0, "A solução modal não deveria ser o vetor nulo.");
 }
 
+void test_self_cell_green_singular_average_is_finite_and_matches_refined_reference() {
+    const Waveguide wg = make_small_homogeneous_waveguide();
+    const Cell& cell = wg.get_cells().front();
+    const double beta = 0.5 * wg.get_k0() * (wg.get_params().n2m + wg.get_params().n3);
+
+    const Complex singular_average = calculate_self_cell_green_singular_average(cell, beta, wg);
+    const Complex refined_reference = reference_self_cell_green_singular_average(cell, beta, wg, 72);
+
+    require(std::isfinite(singular_average.real()),
+            "A média singular log-aware de G^S deveria permanecer finita na auto-interação.");
+    require(std::abs(singular_average.imag()) < 1e-12,
+            "A média singular de G^S deveria permanecer praticamente real no regime guiado suportado.");
+    require(nearly_equal_complex(singular_average, refined_reference, 1e-4, 5e-3),
+            "A média singular log-aware de G^S deveria se aproximar de uma referência numérica refinada.");
+}
+
+void test_matrix_solver_stats_track_shared_and_self_regularizations() {
+    const Waveguide wg = make_small_homogeneous_waveguide();
+    const double beta = 0.5 * wg.get_k0() * (wg.get_params().n2m + wg.get_params().n3);
+    const std::size_t matrix_size = 2 * wg.get_cells().size();
+    ComplexMatrix A(matrix_size, matrix_size);
+
+    reset_green_function_performance_stats();
+    reset_matrix_solver_performance_stats();
+    build_matrix_A(A, beta, wg, AssemblyOptions{});
+
+    const MatrixSolverPerformanceStats matrix_stats = get_matrix_solver_performance_stats();
+    const GreenFunctionPerformanceStats green_stats = get_green_function_performance_stats();
+
+    require(matrix_stats.self_green_regularizations == wg.get_cells().size(),
+            "A montagem deveria regularizar a média de G na auto-interação de cada célula.");
+    require(matrix_stats.self_green_singular_log_quadratures == wg.get_cells().size(),
+            "Cada auto-interação deveria usar a quadratura log-aware de G^S.");
+    require(matrix_stats.self_dy_regularizations == wg.get_cells().size(),
+            "A parte regular de dG/dy deveria ser integrada na auto-interação de cada célula.");
+    require(matrix_stats.shared_volume_bundle_evaluations > 0,
+            "A montagem deveria reutilizar o bundle de G^NS nos pares de células distintos.");
+    require(matrix_stats.shared_boundary_bundle_evaluations > 0,
+            "A integração de fronteira deveria reutilizar o bundle de G^NS por ponto de quadratura.");
+    require(green_stats.g_ns_bundle_evaluations > green_stats.g_ns_value_requests,
+            "A montagem deveria acionar o bundle interno além dos wrappers escalares explícitos.");
+}
+
 } // namespace
 
 int main() {
@@ -341,6 +421,8 @@ int main() {
     test_boundary_quadrature_models_are_distinct();
     test_beta_search_reduces_determinant_magnitude_for_fig2_reference();
     test_mode_solution_returns_finite_coefficients_and_residual();
+    test_self_cell_green_singular_average_is_finite_and_matches_refined_reference();
+    test_matrix_solver_stats_track_shared_and_self_regularizations();
     std::cout << "Matrix solver checks passed." << std::endl;
     return 0;
 }
