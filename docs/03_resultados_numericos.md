@@ -18,7 +18,7 @@ Mostra-se na Fig. 3 a comparação entre nossos resultados e aqueles obtidos por
 
 Em baixas frequências, a curva de Marcatili desvia dos resultados de Yeh e dos nossos.
 
-![Figura 2 — Relação de dispersão de um guia de canal homogêneo. Comparação da equação integral vetorial com os resultados do método dos elementos finitos, a abordagem de Marcatili e o método do índice efetivo.](img/fig_03.png)
+![Figura 3 — Relação de dispersão de um guia de canal homogêneo. Comparação da equação integral vetorial com os resultados do método dos elementos finitos, a abordagem de Marcatili e o método do índice efetivo.](img/fig_03.png)
 
 Figura 3 — Relação de dispersão de um guia de canal homogêneo. Comparação da equação integral vetorial com os resultados do método dos elementos finitos, a abordagem de Marcatili e o método do índice efetivo.
 
@@ -40,15 +40,15 @@ Na Fig. 4, comparamos o guia de canal difundido (curva A) com um guia de canal h
 
 A concordância entre os resultados de Yeh e os da equação integral vetorial é boa. O método do índice efetivo “modificado” fornece uma boa aproximação dos resultados.
 
+![Figura 4 — Curvas de dispersão para o modo dominante $E^{x}_{11}$ em um guia de canal difundido 1-D e em um guia de canal uniforme. Comparação da equação integral vetorial com o método dos elementos finitos e com o método do índice efetivo “modificado”.](img/fig_04.png)
 
-
-
+Figura 4 — Curvas de dispersão para o modo dominante $E^{x}_{11}$ em um guia de canal difundido 1-D e em um guia de canal uniforme. Comparação da equação integral vetorial com o método dos elementos finitos e com o método do índice efetivo “modificado”.
 
 Na Fig. 5, representamos o módulo $|E_y(x,y)|$ do campo elétrico para o modo $E^{y}_{21}$ no guia de canal difundido com difusão parabólica, utilizando uma malha de 50 pontos (10 no eixo $x$ e 5 no eixo $y$), no comprimento de onda de $0.6328\,\mu\text{m}$ (comprimento de onda do laser He-Ne), com dimensão $a=2.22\,\mu\text{m}$.
 
-**Figura 4.** Curvas de dispersão para o modo dominante $E^{x}_{11}$ em um guia de canal difundido 1-D e em um guia de canal uniforme. Comparação da equação integral vetorial com o método dos elementos finitos e com o método do índice efetivo “modificado”.
+![Figura 5 — Distribuição de campo do módulo de $E_y(x,y)$ para o modo $E^{y}_{21}$, no comprimento de onda $\lambda_0=0.6328\,\mu\text{m}$, em um guia de canal difundido 1-D com perfil parabólico do índice de refração, com $a=2b=2.22\,\mu\text{m}$.](img/fig_05.png)
 
-**Figura 5.** Distribuição de campo do módulo de $E_y(x,y)$ para o modo $E^{y}_{21}$, no comprimento de onda $\lambda_0=0.6328\,\mu\text{m}$, em um guia de canal difundido 1-D com perfil parabólico do índice de refração, com $a=2b=2.22\,\mu\text{m}$.
+Figura 5 — Distribuição de campo do módulo de $E_y(x,y)$ para o modo $E^{y}_{21}$, no comprimento de onda $\lambda_0=0.6328\,\mu\text{m}$, em um guia de canal difundido 1-D com perfil parabólico do índice de refração, com $a=2b=2.22\,\mu\text{m}$.
 
 ### 3.3.2. Difusão circular: modo $E^{x}_{11}$
 
@@ -74,4 +74,6 @@ Aqui, $a$ e $b$ são, respectivamente, a largura e a profundidade do núcleo. $L
 
 Também foi realizada a comparação com um guia de canal homogêneo que possui o índice médio $\bar{n}_2$ do guia difundido $(\bar{n}_2=1.47)$, correspondente à curva B da Fig. 6.
 
-**Figura 6.** Curvas de dispersão para o modo dominante $E^{x}_{11}$ em um guia de canal difundido 2-D e em um guia de canal uniforme.
+![Figura 6 — Curvas de dispersão para o modo dominante $E^{x}_{11}$ em um guia de canal difundido 2-D e em um guia de canal uniforme.](img/fig_06.png)
+
+Figura 6 — Curvas de dispersão para o modo dominante $E^{x}_{11}$ em um guia de canal difundido 2-D e em um guia de canal uniforme.
