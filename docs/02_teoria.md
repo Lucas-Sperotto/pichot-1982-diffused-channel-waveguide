@@ -131,3 +131,6 @@ Os valores de $\beta$ são os zeros de $\det(A)$, e, a partir de $X$, pode-se ob
 A fim de testar a precisão do método integral, os resultados obtidos foram comparados com aqueles fornecidos por outras técnicas numéricas: Yeh et al. (método dos elementos finitos) [9,10], Goell (análise computacional por expansão harmônica circular) [3] e o método aproximado de Marcatili [4].
 
 Também foi utilizado um método aproximado baseado no método do índice efetivo [5,6], no qual a equação de dispersão para o caso do guia de canal difundido, dada pela aproximação W.K.B. ou por uma equação equivalente [6], é substituída por uma solução rigorosa obtida por uma equação integral [16]. Essa solução aproximada será chamada de método do índice efetivo “modificado”.
+
+---
+**Navegação:** [00 Resumo](00_titulo_autoria_resumo.md) | [01 Introdução](01_introducao.md) | [02 Formulação](02_formulacao_do_problema_de_valor_de_contorno.md) | [02 Símbolos](02_symbol_dictionary.md) | [02 Teoria](02_teoria.md) | [03 Resultados](03_resultados_numericos.md) | [04 Conclusões](04_conclusoes.md) | [05 Referências](05_referencias.md) | [06 Auditoria](06_auditoria_inicial_do_repositorio.md) | [12 Trilha do Código](12_trilha_equacoes_para_codigo.md) | [Plano](../PLAN.md) | [TODO](../TODO.md)

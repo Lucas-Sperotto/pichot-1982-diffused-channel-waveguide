@@ -185,10 +185,10 @@ void write_field_map_grid(const SimulationCase& sim_case,
         normalize_mode_by_component(coefficients, wg.get_cells().size(), component);
 
     const std::filesystem::path sampling_grid_path = output_path / "field_sampling_grid.csv";
-    std::filesystem::path field_map_path = output_path / sim_case.output.canonical_csv_name;
-    if (field_map_path == sampling_grid_path) {
-        field_map_path = output_path / "field_map.csv";
-    }
+    const std::filesystem::path declared_canonical_path = output_path / sim_case.output.canonical_csv_name;
+    const bool canonical_points_to_sampling_grid = declared_canonical_path == sampling_grid_path;
+    const std::filesystem::path field_map_path =
+        canonical_points_to_sampling_grid ? output_path / "field_map.csv" : declared_canonical_path;
     std::ofstream field_map_file(field_map_path);
     if (!field_map_file) {
         throw std::runtime_error("Não foi possível criar o CSV canônico do mapa de campo.");
@@ -249,8 +249,9 @@ void write_field_map_grid(const SimulationCase& sim_case,
 
     field_map_file.close();
     sampling_grid_file.close();
-    const std::filesystem::path declared_canonical_path = output_path / sim_case.output.canonical_csv_name;
-    copy_file_to_if_different(field_map_path, declared_canonical_path);
+    if (!canonical_points_to_sampling_grid) {
+        copy_file_to_if_different(field_map_path, declared_canonical_path);
+    }
     copy_file_to_if_different(field_map_path, legacy_path);
 
     std::ofstream status_file(output_path / "field_map_status.txt");

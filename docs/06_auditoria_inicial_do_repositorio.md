@@ -1,91 +1,183 @@
-# 06. Auditoria inicial do repositório
+# 06. Auditoria consolidada da Fase 1
 
-Este documento registra a validação inicial de `docs/` e das principais divergências entre a documentação, a estrutura real do repositório e o estado atual do código.
+Este documento passa a consolidar as funções que antes estavam distribuídas entre:
 
-O objetivo aqui não é reescrever a base documental existente, mas tornar explícito o que já está consistente, o que ainda é apenas estruturalmente desejado e quais pendências precisam permanecer auditáveis.
+- `docs/06_auditoria_inicial_do_repositorio.md`;
+- `docs/07_pendencias_reescritas_e_preparacao_figuras_2_a_6.md`;
+- `docs/08_auditoria_repositorio_preparacao_figuras_2_a_6.md`.
 
-## 1. O que já está consistente em `docs/`
+Os arquivos `07` e `08` permanecem no repositório apenas como notas editoriais de redirecionamento. O conteúdo canônico de auditoria da Fase 1 fica mantido aqui.
 
-- `docs/00_titulo_autoria_resumo.md` identifica corretamente o artigo, autoria, periódico e escopo geral.
-- `docs/01_introducao.md` resume o posicionamento histórico do método e dos trabalhos comparados.
-- `docs/02_teoria.md` registra a formulação de Helmholtz, a equação integral vetorial, a função de Green e o papel do método dos momentos.
-- `docs/02_formulacao_do_problema_de_valor_de_contorno.md` fixa a convenção geométrica operacional, os domínios e os perfis de índice que o repositório realmente usa.
-- `docs/02_symbol_dictionary.md` consolida a notação do artigo e sua equivalência com os nomes operacionais do código e dos arquivos JSON.
-- `docs/03_resultados_numericos.md` separa os principais blocos de validação numérica por família de caso.
-- `docs/03.3_exemplos.md` fixa quais figuras entram no escopo de reprodução e qual arquivo de entrada representa cada uma.
-- `docs/09_figuras.md` registra a consolidação editorial das figuras dentro de `docs/03_resultados_numericos.md`, reduzindo duplicação entre documentos.
-- `docs/04_conclusoes.md` e `docs/05_referencias.md` preservam o fechamento científico do artigo.
+## 1. Veredito executivo
 
-Em outras palavras, `docs/` já não cobre apenas o arco narrativo do artigo: ao final desta revisão, também cobre a fundação documental mínima exigida para rastrear a implementação da Fase 1.
+O repositório pode ser considerado documental e operacionalmente fechado para a Fase 1.
 
-## 2. Divergências encontradas
+Em termos práticos, isso significa que:
 
-### 2.1 Estrutura documentada versus estrutura real
+- o problema físico, a geometria, os domínios e os perfis de índice já estão separados da implementação;
+- a notação do artigo já está ligada aos nomes operacionais do código e dos arquivos JSON;
+- as Figuras 2 a 6 já possuem casos executáveis identificáveis em `data/input/figures/`;
+- o fluxo de build, execução e geração de artefatos já está centralizado em `scripts/`;
+- os testes já cobrem leitura de entrada, núcleo de Green, montagem, busca modal protótipo e geração dos principais CSVs.
 
-O arquivo `ESTRUTURA.md` descreve uma árvore-alvo com `src/`, `include/`, `cases/`, `tests/` e `results/`.
+O que permanece aberto a partir daqui já não é fundação documental. É refinamento científico e numérico do solver.
 
-Na data desta revisão, a divergência inicial diminuiu substancialmente: `src/`, `tests/`, `docs/`, `data/` e `scripts/` já existem e já organizam o trabalho real. O que permanece é que `ESTRUTURA.md` ainda deve ser lido mais como direção arquitetural do que como fotografia exata do repositório, especialmente nos pontos em que cita `include/`, `cases/` e `results/`.
+## 2. Base documental hoje consolidada
 
-### 2.2 Build script fora de sincronia
+Os documentos que formam a base canônica desta etapa são:
 
-O `build_and_run.sh` original apontava para arquivos em `src/` e `include/` que ainda não existiam no repositório. Isso criava uma divergência direta entre a interface de execução e o conteúdo realmente disponível.
+- `docs/00_titulo_autoria_resumo.md`, para identificação do artigo e do escopo geral;
+- `docs/01_introducao.md`, para o contexto histórico e bibliográfico;
+- `docs/02_teoria.md`, para a tradução fiel da formulação do artigo;
+- `docs/02_formulacao_do_problema_de_valor_de_contorno.md`, para a convenção operacional adotada no repositório;
+- `docs/02_symbol_dictionary.md`, para a notação e a equivalência com nomes de código;
+- `docs/03_resultados_numericos.md`, agora consolidando também o antigo recorte de exemplos e figuras;
+- `docs/04_conclusoes.md` e `docs/05_referencias.md`, para o fechamento científico do texto traduzido;
+- `docs/12_trilha_equacoes_para_codigo.md`, para a ponte entre equações e implementação.
 
-Na leitura atual, essa divergência já foi superada pelo fluxo baseado em `scripts/build.sh`, `scripts/run_case.sh` e `scripts/generate_figures_2_to_6_csvs.sh`.
+Essa organização reduz duplicação e torna explícito onde termina a tradução do artigo e onde começa a leitura operacional do repositório.
 
-### 2.3 Casos ainda não separados em entradas reproduzíveis
+## 3. Estrutura do repositório e fluxo operacional
 
-Até esta auditoria, o caso parabólico 1-D estava embutido diretamente em `main.cpp`, o que contrariava a diretriz do projeto de usar arquivos de entrada reproduzíveis.
+Na data desta consolidação, a estrutura desejada pelo projeto já aparece de forma prática em:
 
-Na leitura atual, essa pendência também já foi resolvida: os casos operacionais passaram a viver em arquivos JSON, com destaque para `data/input/figures/`.
+- `src/`, para a implementação em C++;
+- `tests/`, para testes unitários e de fumaça;
+- `docs/`, para a base documental auditável;
+- `data/`, para entradas reproduzíveis, manifests e referências auxiliares;
+- `scripts/`, para build, execução e geração do lote principal de figuras;
+- `out/`, para saídas por caso e por figura.
 
-### 2.4 Núcleo numérico ainda em estágio de protótipo
+O fluxo principal ficou estável assim:
 
-Os seguintes blocos continuam explicitamente pendentes no código:
+1. compilar com `scripts/build.sh`;
+2. executar um caso com `scripts/run_case.sh <arquivo.json>`;
+3. gerar o lote das figuras com `scripts/generate_figures_2_to_6_csvs.sh`.
 
-- montagem efetiva dos blocos da matriz do método dos momentos;
-- busca rigorosa de raízes de `det(A) = 0`.
+Isso substitui a fase inicial em que havia divergência entre a estrutura desejada e o conteúdo realmente executável do repositório.
 
-Atualização desta auditoria:
+## 4. Auditoria consolidada das figuras 2 a 6
 
-- a Green escalar `G^S + G^NS` para o regime guiado com `y >= 0` e `y' >= 0` já foi implementada;
-- os gradientes de `G^S` já foram implementados em forma fechada;
-- os gradientes de `G^NS` estão disponíveis nesta etapa por diferença central do próprio kernel.
-- a matriz usada pelo executável já não é mais identidade pura: existe agora um operador escalar protótipo baseado apenas no termo `(k^2-k_3^2)G`, replicado nos blocos `E_x` e `E_y`;
-- a busca modal do executável já minimiza `|det(A)|` e grava esse residual nas saídas CSV, mas isso ainda não equivale à busca rigorosa dos zeros da formulação vetorial completa.
-- a montagem já inclui agora, de forma separada e auditável, a parte volumétrica regular de `\varepsilon \nabla(1/\varepsilon)` multiplicando `\mathrm{grad}'\,G`;
-- o termo distribucional de fronteira introduzido na Eq. (4) já aparece de forma explícita no código como soma sobre segmentos de borda da malha, com normal externa, comprimento e salto de `1/\varepsilon` registrados separadamente;
-- esse termo de fronteira ainda deve ser lido como uma aproximação auditável por quadratura de linha em segmentos, não como tratamento final e fechado da formulação vetorial do artigo.
+### Figura 2
 
-Portanto, o projeto já saiu do estágio de infraestrutura pura, mas qualquer resultado modal ainda deve ser lido como protótipo, não como reprodução validada do artigo.
+- caso: `data/input/figures/fig_02_homogeneous_rectangular_eq_integral.json`;
+- modo-alvo: $E^y_{11}$;
+- perfil: homogêneo;
+- artefato principal: `dispersion_curve.csv`;
+- status nesta fase: caso calibrado em parâmetros, normalização de eixos e caminho de execução.
 
-## 3. Convenção geométrica do artigo versus convenção do código
+### Figura 3
 
-A leitura atual deve ser feita assim:
+- caso: `data/input/figures/fig_03_homogeneous_channel_eq_integral.json`;
+- modo-alvo: $E^y_{11}$;
+- perfil: homogêneo em meio estratificado assimétrico;
+- artefato principal: `dispersion_curve.csv`;
+- status nesta fase: caso calibrado em parâmetros, normalização de eixos e caminho de execução.
 
-- `docs/02_teoria.md` foi mantido fiel à forma do artigo original;
-- `docs/02_formulacao_do_problema_de_valor_de_contorno.md` fixa a convenção operacional usada pelo código e pelos casos executáveis;
-- a diferença entre as duas convenções já não é tratada como ambiguidade editorial em aberto, e sim como uma divergência explicitamente documentada entre artigo e implementação.
+### Figura 4
 
-## 4. Ação prática derivada desta auditoria
+- casos:
+  - `data/input/figures/fig_04_curve_A_diffused_1d_eq_integral.json`;
+  - `data/input/figures/fig_04_curve_B_uniform_reference.json`;
+- modo-alvo: $E^x_{11}$;
+- perfis: `parabolic_1d` para a curva A e homogêneo com índice médio para a curva B;
+- artefato principal: `dispersion_curve.csv` em cada curva;
+- status nesta fase: a distinção entre a curva difundida e a referência uniforme está documentada e operacionalizada.
 
-Para alinhar código e documentação sem inventar física nova, a próxima camada de trabalho foi definida como:
+### Figura 5
 
-- separar casos em arquivos JSON;
-- organizar saídas em `out/<caso>/`;
-- manter scripts reproduzíveis em `scripts/`;
-- adicionar um teste de fumaça mínimo;
-- preservar no código e nas saídas a marcação explícita de que o solver ainda é um protótipo.
+- caso: `data/input/figures/fig_05_field_map_preparation.json`;
+- modo-alvo: $E^y_{21}$;
+- perfil: `parabolic_1d`;
+- artefatos principais e auxiliares:
+  - `field_map.csv`;
+  - `field_sampling_grid.csv`;
+  - `mode_coefficients.csv`;
+  - `field_map_status.txt`;
+- observação de rastreabilidade: o caso hoje declara `field_sampling_grid.csv` como `canonical_csv_name`, mas o repositório preserva `field_map.csv` como artefato do campo reconstruído;
+- status nesta fase: a figura deixou de ser apenas uma grade de amostragem e passou a produzir um mapa de campo auditável.
 
-## 5. Leitura atual após o fechamento documental da Fase 1
+### Figura 6
 
-Da lista acima, os seguintes pontos já podem ser tratados como atendidos nesta etapa:
+- casos:
+  - `data/input/figures/fig_06_curve_A_diffused_2d_eq_integral.json`;
+  - `data/input/figures/fig_06_curve_B_uniform_reference.json`;
+- modo-alvo: $E^x_{11}$;
+- perfis: `circular_2d` para a curva A e homogêneo com índice médio para a curva B;
+- artefato principal: `dispersion_curve.csv` em cada curva;
+- status nesta fase: a família de casos já está calibrada e separada entre perfil difundido e referência uniforme.
 
-- os casos já estão separados em arquivos JSON reproduzíveis;
-- o fluxo de saída já se organiza em `out/` por caso ou por figura;
-- os scripts principais já estão centralizados em `scripts/`;
-- o repositório já possui testes de fumaça e testes estruturais para Green e montagem;
-- a rastreabilidade documental entre problema físico, notação, figuras e casos executáveis já está explícita em `docs/02_*`, `docs/03.3_exemplos.md` e `docs/03_resultados_numericos.md`.
+## 5. Auditoria do solver protótipo
 
-O que permanece aberto a partir desta auditoria já não é mais a infraestrutura mínima da Fase 1, e sim:
+O repositório já saiu do estágio de infraestrutura vazia. Nesta consolidação, o solver protótipo já possui:
 
-- limitações conhecidas do solver protótipo, que ficam para as fases seguintes.
+- Green escalar decomposta em `G^S + G^NS`;
+- derivadas analíticas da parte singular e derivadas numéricas mais robustas da parte não singular;
+- discretização de $\mathcal{D}_2$ por células retangulares com funções-base step;
+- montagem separada entre identidade residual, termo escalar, termo regular de gradiente e termo distributivo de fronteira;
+- busca modal guiada por `modal_residual`, mantendo `|det(A)|` como diagnóstico;
+- reconstrução de coeficientes modais e mapa de campo para a Figura 5.
+
+Ao mesmo tempo, as limitações permanecem explicitamente registradas:
+
+- a formulação vetorial completa do artigo ainda não está fechada;
+- a busca modal ainda não é um resolvedor rigoroso dos zeros exatos de $\det(A)$;
+- a quadratura e a regularização da fronteira ainda são aproximações auditáveis;
+- a nova quadratura oscilatória de `G_NS` aumentou o custo do lote completo das figuras, o que desloca parte do trabalho para a estabilização numérica da Fase 3.
+
+## 6. Auditoria de saídas, scripts e testes
+
+### Saídas
+
+As execuções já produzem artefatos organizados por caso, incluindo:
+
+- `results.csv`;
+- `dispersion_curve.csv` ou `field_map.csv`, conforme o tipo de estudo;
+- `profile_samples.csv`;
+- `output_manifest.json`;
+- `mode_coefficients.csv` e `field_map_status.txt` quando aplicável.
+
+### Scripts
+
+Os scripts principais já estão claros e reproduzíveis:
+
+- `scripts/build.sh`;
+- `scripts/run_case.sh`;
+- `scripts/generate_figures_2_to_6_csvs.sh`.
+
+### Testes
+
+Os testes que sustentam esta etapa são:
+
+- `tests/run_green_function_test.sh`;
+- `tests/run_matrix_solver_test.sh`;
+- `tests/smoke_case_loading.sh`;
+- `tests/smoke_figures_csv_generation.sh`.
+
+Eles já cobrem tanto o caminho operacional mínimo quanto blocos matemáticos sensíveis do protótipo.
+
+## 7. Pendências que passam para a Fase 3
+
+As pendências remanescentes já pertencem à fase de validação científica e refinamento do solver:
+
+- fechar a formulação vetorial completa do artigo;
+- substituir a busca modal aproximada por um método mais rigoroso para localizar zeros de $\det(A)$;
+- reduzir o custo da quadratura oscilatória de `G_NS` sem perder consistência;
+- medir convergência de malha para as figuras de dispersão;
+- comparar quantitativamente as curvas com referências externas digitalizadas;
+- confirmar a identificação modal da Figura 5 com critérios mais fortes do que a simples reconstrução do campo.
+
+## 8. Fechamento desta auditoria
+
+Depois desta consolidação, a leitura recomendada da Fase 1 fica assim:
+
+- `docs/02_formulacao_do_problema_de_valor_de_contorno.md` para a formulação física mínima preservada no repositório;
+- `docs/02_symbol_dictionary.md` para a notação;
+- `docs/03_resultados_numericos.md` para os casos, figuras e papel dos testes;
+- `docs/12_trilha_equacoes_para_codigo.md` para a abertura da Fase 2;
+- `PLAN.md` e `TODO.md` para o que já foi concluído e o que segue em aberto.
+
+Em outras palavras, o repositório já não precisa “descobrir o que reproduzir”. O próximo trabalho é tornar a reprodução numericamente mais fiel e cientificamente validada.
+
+---
+**Navegação:** [00 Resumo](00_titulo_autoria_resumo.md) | [01 Introdução](01_introducao.md) | [02 Formulação](02_formulacao_do_problema_de_valor_de_contorno.md) | [02 Símbolos](02_symbol_dictionary.md) | [02 Teoria](02_teoria.md) | [03 Resultados](03_resultados_numericos.md) | [04 Conclusões](04_conclusoes.md) | [05 Referências](05_referencias.md) | [06 Auditoria](06_auditoria_inicial_do_repositorio.md) | [12 Trilha do Código](12_trilha_equacoes_para_codigo.md) | [Plano](../PLAN.md) | [TODO](../TODO.md)

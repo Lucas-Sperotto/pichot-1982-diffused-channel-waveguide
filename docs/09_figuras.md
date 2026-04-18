@@ -1,19 +1,13 @@
 # 09. Figuras
 
 Nota editorial:
-o detalhamento operacional das Figuras 1 a 6 foi absorvido por `docs/03_resultados_numericos.md`.
+o detalhamento científico e operacional das Figuras 1 a 6 foi consolidado em `docs/03_resultados_numericos.md`.
 
-Essa consolidação foi feita para reduzir duplicação entre documentos e facilitar a sincronização com:
+Nesta etapa do repositório:
 
-- `data/input/figures/`;
-- `data/input/figures/manifest_figures_2_to_6.csv`;
-- `docs/06_auditoria_inicial_do_repositorio.md`;
-- `docs/07_pendencias_reescritas_e_preparacao_figuras_2_a_6.md`;
-- `docs/08_auditoria_repositorio_preparacao_figuras_2_a_6.md`.
+- `docs/03_resultados_numericos.md` é o documento canônico para o recorte das figuras-alvo e para a descrição de como cada caso será resolvido;
+- `docs/06_auditoria_inicial_do_repositorio.md` é o documento canônico para a auditoria consolidada da Fase 1;
+- este arquivo fica preservado apenas para manter a rastreabilidade de referências antigas.
 
-Neste ponto do repositório, a leitura recomendada é:
-
-- `docs/03_resultados_numericos.md` para a descrição científica e operacional das figuras;
-- `docs/03.3_exemplos.md` para o recorte do escopo de reprodução;
-- `docs/02_formulacao_do_problema_de_valor_de_contorno.md` para geometria, domínios e perfis;
-- `TODO.md` para o que ainda resta após o fechamento da Fase 1.
+---
+**Navegação:** [00 Resumo](00_titulo_autoria_resumo.md) | [01 Introdução](01_introducao.md) | [02 Formulação](02_formulacao_do_problema_de_valor_de_contorno.md) | [02 Símbolos](02_symbol_dictionary.md) | [02 Teoria](02_teoria.md) | [03 Resultados](03_resultados_numericos.md) | [04 Conclusões](04_conclusoes.md) | [05 Referências](05_referencias.md) | [06 Auditoria](06_auditoria_inicial_do_repositorio.md) | [12 Trilha do Código](12_trilha_equacoes_para_codigo.md) | [Plano](../PLAN.md) | [TODO](../TODO.md)

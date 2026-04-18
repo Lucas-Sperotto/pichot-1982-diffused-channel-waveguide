@@ -1,9 +1,73 @@
 # 3. Resultados numéricos
 
 Nota editorial:
-o recorte exato das figuras-alvo e a ligação entre cada figura, seu modo e seu arquivo de entrada estão consolidados em `docs/03.3_exemplos.md`. A partir desta revisão, este arquivo também absorve o detalhamento operacional que antes estava espalhado em `docs/09_figuras.md`, para reduzir duplicação e facilitar a sincronização documental.
+este arquivo passa a ser o ponto canônico para:
+
+- o recorte das figuras-alvo;
+- a descrição científica dos casos numéricos;
+- a leitura operacional das Figuras 2 a 6;
+- o papel dos casos auxiliares e dos testes automatizados.
+
+As notas `docs/03.3_exemplos.md` e `docs/09_figuras.md` ficam preservadas apenas como apontadores editoriais para esta versão consolidada.
 
 Vários exemplos são propostos aqui.
+
+## 3.0. Escopo consolidado das figuras-alvo
+
+### 3.0.1. Regra de escopo
+
+A Figura 1 entra como referência geométrica e documental.
+
+Os alvos numéricos de reprodução começam nas Figuras 2 a 6, porque são elas que definem os primeiros compromissos verificáveis do projeto:
+
+- curvas de dispersão;
+- comparação entre perfis homogêneos e difundidos;
+- mapa de campo modal.
+
+### 3.0.2. Tabela consolidada das figuras-alvo
+
+| Figura | Papel no projeto | Modo-alvo | Perfil principal | Caso(s) do repositório | Artefato principal |
+| --- | --- | --- | --- | --- | --- |
+| Fig. 1 | geometria e notação; não é alvo numérico isolado | não se aplica | geometria conceitual do guia difundido | não se aplica | não se aplica |
+| Fig. 2 | curva de dispersão para fibra retangular homogênea | $E^y_{11}$ | homogêneo | `data/input/figures/fig_02_homogeneous_rectangular_eq_integral.json` | `dispersion_curve.csv` |
+| Fig. 3 | curva de dispersão para guia de canal homogêneo | $E^y_{11}$ | homogêneo | `data/input/figures/fig_03_homogeneous_channel_eq_integral.json` | `dispersion_curve.csv` |
+| Fig. 4A | curva de dispersão do guia difundido parabólico 1-D | $E^x_{11}$ | `parabolic_1d` | `data/input/figures/fig_04_curve_A_diffused_1d_eq_integral.json` | `dispersion_curve.csv` |
+| Fig. 4B | referência uniforme por índice médio para a Figura 4 | $E^x_{11}$ | homogêneo com $\bar{n}_2=1.48$ | `data/input/figures/fig_04_curve_B_uniform_reference.json` | `dispersion_curve.csv` |
+| Fig. 5 | mapa de campo modal no guia difundido parabólico 1-D | $E^y_{21}$ | `parabolic_1d` | `data/input/figures/fig_05_field_map_preparation.json` | `field_map.csv` |
+| Fig. 6A | curva de dispersão do guia difundido circular 2-D | $E^x_{11}$ | `circular_2d` | `data/input/figures/fig_06_curve_A_diffused_2d_eq_integral.json` | `dispersion_curve.csv` |
+| Fig. 6B | referência uniforme por índice médio para a Figura 6 | $E^x_{11}$ | homogêneo com $\bar{n}_2=1.47$ | `data/input/figures/fig_06_curve_B_uniform_reference.json` | `dispersion_curve.csv` |
+
+### 3.0.3. O que cada figura precisa preservar
+
+#### Figura 2
+
+- comparação da equação integral vetorial com referências clássicas para um núcleo homogêneo retangular;
+- modo dominante $E^y_{11}$;
+- mesma abcissa normalizada usada no artigo.
+
+#### Figura 3
+
+- caso homogêneo com superstrato e substrato diferentes;
+- modo $E^y_{11}$;
+- comparação com Yeh, Marcatili e método do índice efetivo.
+
+#### Figura 4
+
+- comparação entre um perfil difundido parabólico 1-D e uma referência uniforme de índice médio;
+- modo $E^x_{11}$;
+- necessidade de manter separadas as curvas A e B.
+
+#### Figura 5
+
+- reconstrução do campo $|E_y(x,y)|$;
+- modo $E^y_{21}$;
+- parâmetros do artigo explicitamente fixados no arquivo de entrada, incluindo $\lambda_0=0.6328\,\mu\text{m}$ e $\beta/k_0=1.4447$.
+
+#### Figura 6
+
+- comparação entre um perfil difundido circular 2-D e uma referência uniforme de índice médio;
+- modo $E^x_{11}$;
+- necessidade de preservar a distinção entre a curva A difundida e a curva B uniforme.
 
 ## 3.1. Fibra retangular homogênea
 
@@ -141,9 +205,10 @@ Figura 5 — Distribuição de campo do módulo de $E_y(x,y)$ para o modo $E^{y}
 - modo-alvo: $E^y_{21}$;
 - perfil: `parabolic_1d`;
 - parâmetros documentados: $\lambda_0 = 0.6328\,\mu\text{m}$, $\beta/k_0 = 1.4447$, $n_1 = 1.0$, $n_3 = 1.44$, $n_{2m} = 1.5$, $a = 2b = 2.22\,\mu\text{m}$;
-- artefatos canônicos e auxiliares: `field_map.csv`, `field_sampling_grid.csv`, `mode_coefficients.csv`, `field_map_status.txt`.
+- artefatos principais e auxiliares: `field_map.csv`, `field_sampling_grid.csv`, `mode_coefficients.csv`, `field_map_status.txt`;
+- saída declarada hoje no manifesto do caso: `field_sampling_grid.csv`.
 
-A Figura 5 mostra uma superfície bidimensional do módulo $|E_y(x,y)|$ em um gráfico 3D. No repositório, o plano de amostragem é explicitado por `field_sampling_grid.csv`, com $x \in [-a/2, a/2]$ e $y \in [0,b]`.
+A Figura 5 mostra uma superfície bidimensional do módulo $|E_y(x,y)|$ em um gráfico 3D. No repositório, o plano de amostragem é explicitado por `field_sampling_grid.csv`, com $x \in [-a/2, a/2]$ e $y \in [0,b]$, enquanto o campo reconstruído permanece gravado em `field_map.csv` e também em `results.csv`.
 
 Este caso será resolvido de forma diferente das curvas de dispersão. Parte-se de $\lambda_0$ e $\beta/k_0$ fixados pelo artigo, monta-se o operador discretizado para o perfil parabólico, estima-se um vetor modal no $\beta$ informado e reconstrói-se a componente pedida em uma grade regular. O resultado desta fase é um mapa de campo auditável, não ainda uma validação modal definitiva do modo $E^y_{21}$.
 
@@ -261,3 +326,10 @@ Depois desta consolidação, a Fase 1 fica documentada assim:
 - os casos auxiliares e os testes automatizados já estão ligados ao seu papel dentro do repositório.
 
 O que ainda resta aberto já não é uma lacuna de definição documental do problema. É trabalho das fases seguintes: fechamento da formulação vetorial, robustez da busca modal, convergência de malha e validação quantitativa fina.
+
+## 3.6. Nota editorial de consolidação
+
+As informações que antes apareciam separadas em `docs/03.3_exemplos.md` e `docs/09_figuras.md` passam a ser mantidas aqui. Os dois arquivos antigos continuam no repositório apenas para preservar backlinks e registrar a consolidação documental.
+
+---
+**Navegação:** [00 Resumo](00_titulo_autoria_resumo.md) | [01 Introdução](01_introducao.md) | [02 Formulação](02_formulacao_do_problema_de_valor_de_contorno.md) | [02 Símbolos](02_symbol_dictionary.md) | [02 Teoria](02_teoria.md) | [03 Resultados](03_resultados_numericos.md) | [04 Conclusões](04_conclusoes.md) | [05 Referências](05_referencias.md) | [06 Auditoria](06_auditoria_inicial_do_repositorio.md) | [12 Trilha do Código](12_trilha_equacoes_para_codigo.md) | [Plano](../PLAN.md) | [TODO](../TODO.md)

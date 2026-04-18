@@ -12,7 +12,7 @@
     "family": "figures",
     "figure_id": "fig_05",
     "curve_id": "field_map_preparation",
-    "canonical_csv_name": "field_map.csv"
+    "canonical_csv_name": "field_sampling_grid.csv"
   },
   "materials": {
     "n1": 1.0,

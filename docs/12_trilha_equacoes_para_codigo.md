@@ -213,7 +213,7 @@ O método numérico escolhido para este bloco é uma quadratura de linha por seg
 
 ### 12.5.4. Auto-interação e regularização local
 
-Quando a célula de observação coincide com a célula-fonte, o termo singular de $G_S$ não pode ser avaliado no mesmo ponto. O protótipo atual resolve isso por uma média em quatro subpontos internos da célula-fonte.
+Quando a célula de observação coincide com a célula-fonte, o termo singular de $G_S$ não pode ser avaliado no mesmo ponto. O protótipo atual resolve isso por uma média de célula regularizada, hoje implementada por quadratura de Gauss 2x2 em subcélulas.
 
 Esta escolha deve ser lida corretamente:
 
@@ -325,10 +325,13 @@ Como a base é step, a reconstrução espacial atual é peça-por-peça constant
 Os próximos fechamentos desejáveis já ficaram claros a partir desta trilha:
 
 - confirmar, no nível do artigo, se a etapa de teste é melhor descrita como colocação direta nos centros ou se há outro funcional de teste implícito;
-- substituir a regularização local de quatro subpontos por um tratamento singular mais rigoroso;
-- substituir as diferenças finitas de `G_NS` por derivadas numericamente mais robustas;
+- substituir a regularização local por quadratura de célula por um tratamento singular mais rigoroso;
+- reduzir o custo da quadratura oscilatória de `G_NS` sem perder consistência com o cálculo direto atual das derivadas;
 - revisar se a tradução vetorial dos blocos cruzados `A_xy` e `A_yx` coincide integralmente com a formulação do artigo;
-- trocar a busca por mínimo de $|\det(A)|$ por um critério modal mais rigoroso;
+- trocar a busca hoje guiada por `modal_residual` por um critério modal mais rigoroso;
 - documentar, figura por figura, a convergência em malha exigida para chamar a reprodução de quantitativamente fechada.
 
 Em outras palavras, a Fase 2 já pode ser trabalhada com base auditável: a sequência algorítmica principal está exposta. O que falta agora não é mais descobrir "como o código anda", mas melhorar a fidelidade matemática de cada etapa.
+
+---
+**Navegação:** [00 Resumo](00_titulo_autoria_resumo.md) | [01 Introdução](01_introducao.md) | [02 Formulação](02_formulacao_do_problema_de_valor_de_contorno.md) | [02 Símbolos](02_symbol_dictionary.md) | [02 Teoria](02_teoria.md) | [03 Resultados](03_resultados_numericos.md) | [04 Conclusões](04_conclusoes.md) | [05 Referências](05_referencias.md) | [06 Auditoria](06_auditoria_inicial_do_repositorio.md) | [12 Trilha do Código](12_trilha_equacoes_para_codigo.md) | [Plano](../PLAN.md) | [TODO](../TODO.md)
