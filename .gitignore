@@ -39,3 +39,11 @@
 
 # debug information files
 *.dwo
+
+# Local tooling and generated artifacts
+.codex
+.codex/
+__pycache__/
+*.pyc
+bin/
+out/
