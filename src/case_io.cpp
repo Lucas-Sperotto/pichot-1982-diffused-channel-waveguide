@@ -195,12 +195,15 @@ void validate_case(const SimulationCase& sim_case) {
     if (sim_case.discretization.Nx == 0 || sim_case.discretization.Ny == 0) {
         throw std::runtime_error("A discretização deve ter Nx e Ny positivos.");
     }
-    if (sim_case.sweep.v_start <= 0.0 || sim_case.sweep.v_end < sim_case.sweep.v_start ||
-        sim_case.sweep.v_step <= 0.0) {
-        throw std::runtime_error("A varredura em V deve satisfazer v_start > 0, v_end >= v_start e v_step > 0.");
-    }
     if (sim_case.assembly_options.boundary_subdivisions == 0) {
         throw std::runtime_error("boundary_subdivisions deve ser positivo.");
+    }
+    if (sim_case.study_kind == StudyKind::DISPERSION_CURVE) {
+        if (sim_case.sweep.v_start <= 0.0 || sim_case.sweep.v_end < sim_case.sweep.v_start ||
+            sim_case.sweep.v_step <= 0.0) {
+            throw std::runtime_error(
+                "Casos de dispersão exigem sweep com v_start > 0, v_end >= v_start e v_step > 0.");
+        }
     }
     if (sim_case.study_kind == StudyKind::FIELD_MAP) {
         if (sim_case.field_map.lambda0 <= 0.0) {
@@ -236,8 +239,12 @@ void write_summary_file(const SimulationCase& sim_case,
     summary << "canonical_csv_name: " << sim_case.output.canonical_csv_name << "\n";
     summary << "Nx: " << sim_case.discretization.Nx << "\n";
     summary << "Ny: " << sim_case.discretization.Ny << "\n";
-    summary << "article_x_range: [" << sim_case.sweep.v_start << ", " << sim_case.sweep.v_end
-            << "] step " << sim_case.sweep.v_step << "\n";
+    if (sim_case.study_kind == StudyKind::DISPERSION_CURVE) {
+        summary << "article_x_range: [" << sim_case.sweep.v_start << ", " << sim_case.sweep.v_end
+                << "] step " << sim_case.sweep.v_step << "\n";
+    } else {
+        summary << "article_x_range: not_applicable\n";
+    }
     summary << "include_scalar_contrast: " << (sim_case.assembly_options.include_scalar_contrast ? "true" : "false")
             << "\n";
     summary << "include_regular_gradient: " << (sim_case.assembly_options.include_regular_gradient ? "true" : "false")
@@ -267,7 +274,6 @@ SimulationCase load_case_from_json(const std::string& path) {
     const std::string materials = extract_object(text, "materials");
     const std::string geometry = extract_object(text, "geometry");
     const std::string discretization = extract_object(text, "discretization");
-    const std::string sweep = extract_object(text, "sweep");
     const std::string solver = extract_optional_object(text, "solver");
     const std::string study = extract_optional_object(text, "study");
     const std::string output = extract_optional_object(text, "output");
@@ -295,9 +301,12 @@ SimulationCase load_case_from_json(const std::string& path) {
     sim_case.discretization.Nx = extract_size(discretization, "Nx");
     sim_case.discretization.Ny = extract_size(discretization, "Ny");
 
-    sim_case.sweep.v_start = extract_double(sweep, "v_start");
-    sim_case.sweep.v_end = extract_double(sweep, "v_end");
-    sim_case.sweep.v_step = extract_double(sweep, "v_step");
+    if (sim_case.study_kind == StudyKind::DISPERSION_CURVE) {
+        const std::string sweep = extract_object(text, "sweep");
+        sim_case.sweep.v_start = extract_double(sweep, "v_start");
+        sim_case.sweep.v_end = extract_double(sweep, "v_end");
+        sim_case.sweep.v_step = extract_double(sweep, "v_step");
+    }
 
     if (!solver.empty()) {
         if (has_key(solver, "include_scalar_contrast")) {

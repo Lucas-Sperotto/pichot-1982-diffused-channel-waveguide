@@ -11,7 +11,7 @@
   "output": {
     "family": "figures",
     "figure_id": "fig_05",
-    "curve_id": "field_map_ey21",
+    "curve_id": "field_map_preparation",
     "canonical_csv_name": "field_map.csv"
   },
   "materials": {
@@ -28,11 +28,6 @@
     "Nx": 10,
     "Ny": 5
   },
-  "sweep": {
-    "v_start": 3.5,
-    "v_end": 3.5,
-    "v_step": 1.0
-  },
   "field_map": {
     "lambda0": 6.328e-7,
     "beta_over_k0": 1.4447,
@@ -47,5 +42,5 @@
     "boundary_quadrature_model": "gauss2",
     "boundary_subdivisions": 2
   },
-  "notes": "Figura 5 calibrada pela propria imagem do artigo: lambda0=0.6328 um, beta/k0=1.4447, a=2.22 um, n1=1.0, n3=1.44 e n2m=1.5. O campo ainda vem da discretizacao atual do operador, mas deixa de ser apenas uma grade vazia."
+  "notes": "Reconstrucao do mapa de campo para a figura 5. Parametros calibrados a partir do artigo, incluindo beta/k0. A confirmacao de que o campo representa o modo E^y_21 e uma pendencia central."
 }

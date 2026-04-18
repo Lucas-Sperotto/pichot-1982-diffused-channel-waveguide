@@ -3,9 +3,19 @@ import matplotlib.pyplot as plt
 import os
 import argparse
 
+def infer_dispersion_columns(df):
+    if {'article_x_param', 'normalized_beta'}.issubset(df.columns):
+        return 'article_x_param', 'normalized_beta', 'Abscissa do Artigo', 'Beta Normalizado'
+    if {'V_param', 'B_norm'}.issubset(df.columns):
+        return 'V_param', 'B_norm', 'Frequência Normalizada (V)', 'Índice Efetivo Normalizado (B)'
+    raise ValueError(
+        "O CSV precisa conter as colunas ('article_x_param', 'normalized_beta') "
+        "ou, por compatibilidade legada, ('V_param', 'B_norm')."
+    )
+
 def plot_dispersion_curve(csv_path, output_dir):
     """
-    Lê os dados do CSV e plota a curva de dispersão B vs V.
+    Lê os dados do CSV e plota a curva de dispersão no formato atual do repositório.
     """
     try:
         df = pd.read_csv(csv_path)
@@ -14,29 +24,27 @@ def plot_dispersion_curve(csv_path, output_dir):
         print("Execute primeiro 'scripts/run_case.sh <caso.json>' para gerar o CSV.")
         return
 
-    # Exemplo de colunas esperadas no CSV: 'V_param', 'B_norm'
-    # O parâmetro V é uma frequência normalizada, comum em guias de onda.
-    # B é o índice efetivo normalizado.
-    if 'V_param' not in df.columns or 'B_norm' not in df.columns:
-        print(f"Erro: O CSV '{csv_path}' deve conter as colunas 'V_param' e 'B_norm'.")
+    try:
+        x_col, y_col, x_label, y_label = infer_dispersion_columns(df)
+    except ValueError as exc:
+        print(f"Erro: {exc}")
         return
 
     fig, ax = plt.subplots(figsize=(8, 6))
 
-    ax.plot(df['V_param'], df['B_norm'], 'o-', label='Este Trabalho (Eq. Integral)')
+    ax.plot(df[x_col], df[y_col], 'o-', label='Este Trabalho (Eq. Integral)')
     
     # TODO: Adicionar dados de outros métodos para comparação (carregar de outros CSVs ou hardcoded)
     # Exemplo: ax.plot(V_marcatili, B_marcatili, '--', label='Marcatili (Aprox.)')
 
-    ax.set_xlabel('Frequência Normalizada (V)')
-    ax.set_ylabel('Índice Efetivo Normalizado (B)')
-    ax.set_title('Curva de Dispersão do Modo Fundamental')
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_title('Curva de Dispersão')
     ax.set_xlim(left=0)
-    ax.set_ylim(0, 1)
     ax.grid(True, linestyle='--', alpha=0.6)
     ax.legend()
 
-    output_path = os.path.join(output_dir, 'figura_dispersao.png')
+    output_path = os.path.join(output_dir, 'dispersion_curve.png')
     plt.savefig(output_path)
     print(f"Gráfico de dispersão salvo em: {output_path}")
     plt.close(fig)
@@ -50,7 +58,7 @@ def main():
     parser.add_argument(
         '--data-file', 
         type=str, 
-        default='out/fig4_parabolic_1d/results.csv',
+        default='out/figures/fig_04/fig_04_curve_A_diffused_1d_eq_integral/dispersion_curve.csv',
         help='Caminho para o arquivo de dados CSV.'
     )
     parser.add_argument(

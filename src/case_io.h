@@ -11,9 +11,9 @@ enum class StudyKind {
 };
 
 struct SweepRange {
-    double v_start;
-    double v_end;
-    double v_step;
+    double v_start = 0.0;
+    double v_end = 0.0;
+    double v_step = 0.0;
 };
 
 struct OutputSpec {
