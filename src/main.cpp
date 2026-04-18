@@ -48,8 +48,9 @@ int main(int argc, char* argv[]) {
         std::cout << "Iniciando simulação do caso '" << sim_case.case_id << "'..." << std::endl;
         std::cout << "Referência alvo: " << sim_case.article_figure
                   << " (" << sim_case.article_section << ")" << std::endl;
-        std::cout << "Aviso: a busca modal usa um operador escalar protótipo e minimiza |det(A)|,"
-                  << " ainda sem a montagem vetorial completa do artigo."
+        std::cout << "Aviso: a busca modal usa um operador protótipo com o termo escalar"
+                  << " (k^2-k3^2)G e a parte volumétrica regular com grad'G,"
+                  << " ainda sem o termo distribucional de fronteira da formulação completa."
                   << std::endl;
 
         WaveguideParams params = sim_case.waveguide;

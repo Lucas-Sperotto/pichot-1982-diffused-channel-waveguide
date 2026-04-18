@@ -53,6 +53,72 @@ Complex evaluate_green_between_cells(const Cell& observation,
     return average / 4.0;
 }
 
+Complex evaluate_dG_dx_source_between_cells(const Cell& observation,
+                                            const Cell& source,
+                                            double beta,
+                                            const Waveguide& wg) {
+    if (observation.id != source.id) {
+        return calculate_dG_S_dx_source(observation.cx, observation.cy, source.cx, source.cy, beta, wg) +
+               calculate_dG_NS_dx_source(observation.cx, observation.cy, source.cx, source.cy, beta, wg);
+    }
+
+    const double x_offset = 0.25 * source.dx;
+    const double y_offset = 0.25 * source.dy;
+    Complex average(0.0, 0.0);
+
+    for (double sx : {-1.0, 1.0}) {
+        for (double sy : {-1.0, 1.0}) {
+            average += calculate_dG_S_dx_source(observation.cx,
+                                                observation.cy,
+                                                source.cx + sx * x_offset,
+                                                source.cy + sy * y_offset,
+                                                beta,
+                                                wg) +
+                       calculate_dG_NS_dx_source(observation.cx,
+                                                 observation.cy,
+                                                 source.cx + sx * x_offset,
+                                                 source.cy + sy * y_offset,
+                                                 beta,
+                                                 wg);
+        }
+    }
+
+    return average / 4.0;
+}
+
+Complex evaluate_dG_dy_source_between_cells(const Cell& observation,
+                                            const Cell& source,
+                                            double beta,
+                                            const Waveguide& wg) {
+    if (observation.id != source.id) {
+        return calculate_dG_S_dy_source(observation.cx, observation.cy, source.cx, source.cy, beta, wg) +
+               calculate_dG_NS_dy_source(observation.cx, observation.cy, source.cx, source.cy, beta, wg);
+    }
+
+    const double x_offset = 0.25 * source.dx;
+    const double y_offset = 0.25 * source.dy;
+    Complex average(0.0, 0.0);
+
+    for (double sx : {-1.0, 1.0}) {
+        for (double sy : {-1.0, 1.0}) {
+            average += calculate_dG_S_dy_source(observation.cx,
+                                                observation.cy,
+                                                source.cx + sx * x_offset,
+                                                source.cy + sy * y_offset,
+                                                beta,
+                                                wg) +
+                       calculate_dG_NS_dy_source(observation.cx,
+                                                 observation.cy,
+                                                 source.cx + sx * x_offset,
+                                                 source.cy + sy * y_offset,
+                                                 beta,
+                                                 wg);
+        }
+    }
+
+    return average / 4.0;
+}
+
 struct SearchSample {
     double beta;
     double residual;
@@ -128,18 +194,31 @@ void build_matrix_A(ComplexMatrix& A, double beta, const Waveguide& wg) {
                 wg.get_k_squared(source.cx, source.cy) - background_k_squared;
             const double source_area = source.dx * source.dy;
             const Complex green_average = evaluate_green_between_cells(observation, source, beta, wg);
+            const Complex dG_dx_average = evaluate_dG_dx_source_between_cells(observation, source, beta, wg);
+            const Complex dG_dy_average = evaluate_dG_dy_source_between_cells(observation, source, beta, wg);
+            const Vector2 epsilon_grad_inverse =
+                wg.get_regular_epsilon_grad_inverse(source.cx, source.cy);
             const Complex scalar_kernel = contrast_k_squared * source_area * green_average;
+            const Complex regular_kernel_xx = source_area * epsilon_grad_inverse.x * dG_dx_average;
+            const Complex regular_kernel_xy = source_area * epsilon_grad_inverse.y * dG_dx_average;
+            const Complex regular_kernel_yx = source_area * epsilon_grad_inverse.x * dG_dy_average;
+            const Complex regular_kernel_yy = source_area * epsilon_grad_inverse.y * dG_dy_average;
 
             if (i == j) {
                 A_xx = Complex(1.0, 0.0);
                 A_yy = Complex(1.0, 0.0);
             }
 
-            // Protótipo escalar: mantém apenas o termo (k^2 - k3^2) G e replica o mesmo
-            // operador nos blocos Ex e Ey. Os acoplamentos vetoriais A_xy/A_yx ainda
-            // dependem da montagem completa com grad' G e termos distribucionais.
+            // Etapa intermediária auditável:
+            // - mantém o termo escalar (k^2-k3^2) G nos blocos diagonais;
+            // - acrescenta a parte volumétrica regular de ε grad(1/ε) · E multiplicando grad'G;
+            // - ainda não inclui o termo distribucional de fronteira discutido na Eq. (4).
             A_xx -= scalar_kernel;
             A_yy -= scalar_kernel;
+            A_xx -= regular_kernel_xx;
+            A_xy -= regular_kernel_xy;
+            A_yx -= regular_kernel_yx;
+            A_yy -= regular_kernel_yy;
 
             A.at(i, j) = A_xx;
             A.at(i, j + N) = A_xy;

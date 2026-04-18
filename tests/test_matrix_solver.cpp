@@ -31,7 +31,24 @@ Waveguide make_small_homogeneous_waveguide() {
     return Waveguide(params, discretization);
 }
 
-void test_scalar_blocks_are_decoupled() {
+Waveguide make_small_parabolic_waveguide() {
+    WaveguideParams params;
+    params.n1 = 1.0;
+    params.n3 = 1.47;
+    params.n2m = 1.49;
+    params.a = 2.22e-6;
+    params.b = 1.11e-6;
+    params.lambda0 = 0.85e-6;
+    params.profile_type = ProfileType::PARABOLIC_1D;
+
+    Discretization discretization;
+    discretization.Nx = 3;
+    discretization.Ny = 3;
+
+    return Waveguide(params, discretization);
+}
+
+void test_homogeneous_blocks_remain_decoupled() {
     const Waveguide wg = make_small_homogeneous_waveguide();
     const double beta = 0.5 * wg.get_k0() * (wg.get_params().n2m + wg.get_params().n3);
     const std::size_t matrix_size = 2 * wg.get_cells().size();
@@ -42,13 +59,56 @@ void test_scalar_blocks_are_decoupled() {
     const std::size_t N = wg.get_cells().size();
     for (std::size_t i = 0; i < N; ++i) {
         for (std::size_t j = 0; j < N; ++j) {
-            require(std::abs(A.at(i, j + N)) < 1e-14, "O bloco A_xy deveria estar nulo nesta etapa.");
-            require(std::abs(A.at(i + N, j)) < 1e-14, "O bloco A_yx deveria estar nulo nesta etapa.");
+            require(std::abs(A.at(i, j + N)) < 1e-14, "O bloco A_xy deveria ficar nulo no caso homogêneo.");
+            require(std::abs(A.at(i + N, j)) < 1e-14, "O bloco A_yx deveria ficar nulo no caso homogêneo.");
             require(std::abs(A.at(i, j) - A.at(i + N, j + N)) < 1e-10,
-                    "Os blocos A_xx e A_yy deveriam coincidir no protótipo escalar.");
+                    "Os blocos A_xx e A_yy deveriam coincidir quando o gradiente regular é nulo.");
             require(std::isfinite(A.at(i, j).real()), "Os coeficientes da matriz deveriam ser finitos.");
         }
     }
+}
+
+void test_regular_gradient_field_matches_profile_expectation() {
+    const Waveguide homogeneous = make_small_homogeneous_waveguide();
+    const Vector2 homogeneous_regular = homogeneous.get_regular_epsilon_grad_inverse(0.0, 0.5e-6);
+    require(std::abs(homogeneous_regular.x) < 1e-14 && std::abs(homogeneous_regular.y) < 1e-14,
+            "O perfil homogêneo deveria ter campo regular ε grad(1/ε) nulo.");
+
+    const Waveguide parabolic = make_small_parabolic_waveguide();
+    const Vector2 parabolic_regular = parabolic.get_regular_epsilon_grad_inverse(0.0, 0.5 * parabolic.get_params().b);
+    require(std::abs(parabolic_regular.x) < 1e-14,
+            "O perfil parabólico 1-D não deveria gerar componente regular em x.");
+    require(parabolic_regular.y > 0.0,
+            "O perfil parabólico 1-D deveria gerar componente regular positiva em y no interior.");
+}
+
+void test_parabolic_profile_introduces_regular_grad_coupling() {
+    const Waveguide wg = make_small_parabolic_waveguide();
+    const double beta = 0.5 * wg.get_k0() * (wg.get_params().n2m + wg.get_params().n3);
+    const std::size_t matrix_size = 2 * wg.get_cells().size();
+    ComplexMatrix A(matrix_size, matrix_size);
+
+    build_matrix_A(A, beta, wg);
+
+    const std::size_t N = wg.get_cells().size();
+    double max_xy = 0.0;
+    double max_yx = 0.0;
+    double max_diag_difference = 0.0;
+
+    for (std::size_t i = 0; i < N; ++i) {
+        for (std::size_t j = 0; j < N; ++j) {
+            max_xy = std::max(max_xy, std::abs(A.at(i, j + N)));
+            max_yx = std::max(max_yx, std::abs(A.at(i + N, j)));
+            max_diag_difference =
+                std::max(max_diag_difference, std::abs(A.at(i, j) - A.at(i + N, j + N)));
+        }
+    }
+
+    require(max_xy > 0.0, "O termo regular com grad'G deveria introduzir acoplamento A_xy no caso parabólico.");
+    require(max_diag_difference > 0.0,
+            "O termo regular com grad'G deveria diferenciar A_xx e A_yy no caso parabólico.");
+    require(max_yx < 1e-12,
+            "No perfil parabólico 1-D, a parte regular não deveria introduzir A_yx porque o gradiente em x é nulo.");
 }
 
 void test_beta_search_reduces_determinant_residual() {
@@ -73,7 +133,9 @@ void test_beta_search_reduces_determinant_residual() {
 } // namespace
 
 int main() {
-    test_scalar_blocks_are_decoupled();
+    test_homogeneous_blocks_remain_decoupled();
+    test_regular_gradient_field_matches_profile_expectation();
+    test_parabolic_profile_introduces_regular_grad_coupling();
     test_beta_search_reduces_determinant_residual();
     std::cout << "Matrix solver prototype checks passed." << std::endl;
     return 0;

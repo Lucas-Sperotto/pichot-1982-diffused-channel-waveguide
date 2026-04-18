@@ -35,6 +35,11 @@ struct Cell {
     size_t id;     // Identificador único
 };
 
+struct Vector2 {
+    double x;
+    double y;
+};
+
 class Waveguide {
 public:
     Waveguide(const WaveguideParams& params, const Discretization& disc);
@@ -42,6 +47,8 @@ public:
     const std::vector<Cell>& get_cells() const { return cells; }
     const WaveguideParams& get_params() const { return params; }
     double get_refractive_index(double x, double y) const;
+    Vector2 get_regular_refractive_index_gradient(double x, double y) const;
+    Vector2 get_regular_epsilon_grad_inverse(double x, double y) const;
     double get_k_squared(double x, double y) const;
     double get_k0() const { return 2.0 * PI / params.lambda0; }
 
@@ -50,4 +57,5 @@ private:
     Discretization discretization;
     std::vector<Cell> cells;
     std::function<double(double, double, const WaveguideParams&)> n_profile_func;
+    std::function<Vector2(double, double, const WaveguideParams&)> n_gradient_func;
 };
