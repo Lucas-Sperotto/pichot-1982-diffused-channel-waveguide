@@ -96,11 +96,38 @@ void test_green_gradients_against_finite_difference() {
             "A derivada em y' da Green não bateu com a diferença finita.");
 }
 
+void test_green_ns_gradients_against_finite_difference() {
+    const Waveguide wg = make_reference_waveguide();
+    const double beta = 1.01 * wg.get_k0() * wg.get_params().n2m;
+
+    const double x = 0.12e-6;
+    const double y = 0.40e-6;
+    const double xp = -0.18e-6;
+    const double yp = 0.62e-6;
+    const double h = 2e-9;
+
+    const double numerical_dx =
+        (calculate_G_NS(x, y, xp + h, yp, beta, wg).real() - calculate_G_NS(x, y, xp - h, yp, beta, wg).real()) /
+        (2.0 * h);
+    const double numerical_dy =
+        (calculate_G_NS(x, y, xp, yp + h, beta, wg).real() - calculate_G_NS(x, y, xp, yp - h, beta, wg).real()) /
+        (2.0 * h);
+
+    const double analytical_dx = calculate_dG_NS_dx_source(x, y, xp, yp, beta, wg).real();
+    const double analytical_dy = calculate_dG_NS_dy_source(x, y, xp, yp, beta, wg).real();
+
+    require(nearly_equal(analytical_dx, numerical_dx, 2e-2, 2e-3),
+            "A derivada em x' de G^NS não bateu com a diferença finita.");
+    require(nearly_equal(analytical_dy, numerical_dy, 1e-1, 1e-2),
+            "A derivada em y' de G^NS não bateu com a diferença finita.");
+}
+
 } // namespace
 
 int main() {
     test_green_symmetry_and_decay();
     test_green_gradients_against_finite_difference();
+    test_green_ns_gradients_against_finite_difference();
     std::cout << "Green function sanity checks passed." << std::endl;
     return 0;
 }

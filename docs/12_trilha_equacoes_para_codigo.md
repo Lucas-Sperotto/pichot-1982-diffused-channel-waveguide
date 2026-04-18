@@ -102,13 +102,12 @@ $$
 O tratamento computacional atual é:
 
 - `calculate_G_S`: usa a forma fechada com a função de Bessel modificada $K_0$;
-- `calculate_G_NS`: avalia a integral de Fourier sobre $\nu \in [0,+\infty)$ após a transformação $\nu = t/(1-t)$, seguida de quadratura adaptativa de Simpson em $t \in [0,1)$;
+- `calculate_G_NS`: quando $x \neq x'$, avalia a integral de Fourier por quadratura oscilatória direta no domínio de $\nu$, em blocos finitos com Simpson adaptativo; no caso praticamente não oscilatório, preserva a integração transformada em $t \in [0,1)$;
 - `calculate_dG_S_dx_source` e `calculate_dG_S_dy_source`: usam derivadas analíticas da parte singular com $K_1$;
-- `calculate_dG_NS_dx_source` e `calculate_dG_NS_dy_source`: usam diferenças finitas do próprio `G_NS`.
+- `calculate_dG_NS_dx_source` e `calculate_dG_NS_dy_source`: derivam diretamente a expressão integral de `G_NS` sob o sinal de integral e usam a mesma quadratura oscilatória direta quando há fase não trivial.
 
 Isto preserva a decomposição do artigo, mas ainda não fecha toda a parte numérica com o mesmo rigor teórico do texto original. Em particular:
 
-- as derivadas da parte não singular ainda não usam uma fórmula integral dedicada;
 - a singularidade logarítmica de $G_S$ ainda não recebe uma quadratura analítica exata ao nível de célula.
 
 ## 12.5. Montagem da matriz do método dos momentos
