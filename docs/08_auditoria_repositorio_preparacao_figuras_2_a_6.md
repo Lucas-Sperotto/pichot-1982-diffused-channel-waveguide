@@ -91,6 +91,13 @@ O repositório passou a validar explicitamente:
 - o status reconstruído da figura 5;
 - a existência de um vetor modal finito e de residual modal finito.
 
+Os testes já existentes podem ser lidos assim:
+
+- `tests/run_green_function_test.sh` compila e executa `tests/test_green_function.cpp`, verificando simetria, decaimento e derivadas do núcleo de Green;
+- `tests/run_matrix_solver_test.sh` compila e executa `tests/test_matrix_solver.cpp`, verificando montagem, acoplamentos, termo de fronteira, quadratura e solução modal protótipo;
+- `tests/smoke_case_loading.sh` valida o encadeamento mínimo do executável em um caso homogêneo simples;
+- `tests/smoke_figures_csv_generation.sh` valida a geração dos artefatos principais das Figuras 2 a 6 e a reconstrução de campo da Figura 5.
+
 ## 6. Conclusão desta auditoria
 
 Depois desta revisão, o repositório pode ser descrito assim:
@@ -102,3 +109,14 @@ Depois desta revisão, o repositório pode ser descrito assim:
 - ainda dependente de validação quantitativa e de refinamento científico do solver.
 
 Em resumo: já não estamos apenas “preparando CSVs”; agora estamos gerando artefatos numericamente interpretáveis. O que resta é reduzir a distância entre esses artefatos e a solução vetorial final do artigo.
+
+## 7. Leitura para fechamento da Fase 1
+
+Depois da revisão documental atual, esta auditoria pode ser interpretada assim:
+
+- o repositório já possui uma base documental explícita para geometria, notação, figuras-alvo e casos de teste;
+- os arquivos de entrada das figuras já estão calibrados e centralizados;
+- os scripts principais de execução já estão definidos;
+- os testes existentes já cobrem tanto o caminho operacional mínimo quanto os blocos matemáticos mais sensíveis do protótipo.
+
+Portanto, o que ainda falta não é “descobrir o que reproduzir” nem “definir como chamar os casos”, e sim melhorar a fidelidade numérica do solver. Esse restante pertence à Fase 2 em diante, não à fundação documental da Fase 1.

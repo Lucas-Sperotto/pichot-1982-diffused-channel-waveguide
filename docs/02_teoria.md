@@ -1,6 +1,9 @@
 # 2. Teoria
 
-A inomogeneidade considerada aqui é mostrada na Fig. 1. Ela preenche o domínio $\mathcal{D}_2$ (meio II) com um perfil de permissividade $\varepsilon_2(x,y)$, que pode ser uma função descontínua ou contínua. Esse domínio é circundado pelos domínios $\mathcal{D}_1$ (superstrato) e $\mathcal{D}_3$ (substrato), com permissividades constantes $\varepsilon_1$ e $\varepsilon_3$, respectivamente $(\mu=\mu_0$ em cada meio). $\mathcal{R}$ é a fronteira entre os domínios $\mathcal{D}_2$, $\mathcal{D}_1$ e $\mathcal{D}_3$.
+Nota editorial:
+para a convenção geométrica operacional do repositório, o dicionário de símbolos e a separação explícita dos perfis de índice, ver `docs/02_formulacao_do_problema_de_valor_de_contorno.md` e `docs/02_symbol_dictionary.md`.
+
+A inomogeneidade considerada aqui é mostrada na Fig. 1. Ela preenche o domínio $\mathcal{D}_2$ (meio II - guia) com um perfil de permissividade $\varepsilon_2(x,y)$, que pode ser uma função descontínua ou contínua. Esse domínio é circundado pelos domínios $\mathcal{D}_1$ (superstrato) e $\mathcal{D}_3$ (substrato), com permissividades constantes $\varepsilon_1$ e $\varepsilon_3$, respectivamente $(\mu=\mu_0$ em cada meio). $\mathcal{R}$ é a fronteira entre os domínios $\mathcal{D}_2$, $\mathcal{D}_1$ e $\mathcal{D}_3$.
 
 ![Figura 1 — Geometria do problema: guia de onda dielétrico inomogêneo embutido em um substrato.](img/fig_01.png)
 
@@ -53,7 +56,7 @@ No sentido das distribuições,
 ## (4)
 
 $$
-\varepsilon(x,y)\,\mathbf{E}(x,y)\cdot \mathrm{grad}\!\left(\frac{1}{\varepsilon(x,y)}\right) = \varepsilon(x,y)\,\mathbf{E}(x,y)\cdot \left[ \left\{ \mathrm{grad}\!\left(\frac{1}{\varepsilon(x,y)}\right) \right\} + n_0\,\nu_{\delta\varepsilon}\,\delta_{\mathcal{R}} \right]
+\varepsilon(x,y)\,\mathbf{E}(x,y)\cdot \mathrm{grad}\!\left(\frac{1}{\varepsilon(x,y)}\right) = \varepsilon(x,y)\,\mathbf{E}(x,y)\cdot \left[ \left\{ \mathrm{grad}\!\left(\frac{1}{\varepsilon(x,y)}\right) \right\} + n_0\,\sigma_{1\varepsilon}\,\delta_{\mathcal{R}} \right]
 $$
 
 onde
@@ -62,7 +65,7 @@ $$
 \left\{ \mathrm{grad}\!\left(\frac{1}{\varepsilon(x,y)}\right) \right\}
 $$
 
-significa que a derivação deve ser tomada no sentido funcional, $\nu_{1/\varepsilon}$ representa a variação do valor da função $1/\varepsilon$ sobre a fronteira $\mathcal{R}$, e $\delta_{\mathcal{R}}$ é a distribuição cilíndrica definida em $\mathcal{R}$.
+significa que a derivação deve ser tomada no sentido funcional, $\sigma_{1/\varepsilon}$ representa a variação do valor da função $1/\varepsilon$ sobre a fronteira $\mathcal{R}$, e $\delta_{\mathcal{R}}$ é a distribuição cilíndrica definida em $\mathcal{R}$.
 
 A função de Green $G(x,y;x',y')$ é a função associada a uma fonte linear embutida no substrato (meio III), quando a inomogeneidade é removida. Ela é dada, em termos de transformada de Fourier, por:
 
@@ -92,13 +95,13 @@ $$
 \gamma_3^2 = 4\pi^2\nu^2 + \beta^2 - k_3^2 > 0
 $$
 
-No meio III $(y>0)$, $G(x,y;x',y')$ é expresso como a soma de duas funções, $G^{S}$ e $G^{NS}$, com
+No meio III $(y>0)$, $G(x,y;x',y')$ é expresso como a soma de duas funções, $G_{S}$ e $G_{NS}$, com
 
 ## (7)
 
 $$
 \begin{aligned}
-G^{S}(x,y;x',y') & = \int_{-\infty}^{+\infty} \frac{1}{2\gamma_3} \exp\!\left(-\gamma_3|y-y'|\right) \exp\!\left[2i\pi\nu(x-x')\right] \,d\nu \\
+G_{S}(x,y;x',y') & = \int_{-\infty}^{+\infty} \frac{1}{2\gamma_3} \exp\!\left(-\gamma_3|y-y'|\right) \exp\!\left[2i\pi\nu(x-x')\right] \,d\nu \\
 & = \frac{1}{2\pi} K_0\!\left( (\beta^2-k_3^2)^{1/2} \left[ (x-x')^2+(y-y')^2 \right]^{1/2} \right)
 \end{aligned}
 $$
@@ -108,7 +111,7 @@ onde $K_0(x)$ é a função de Bessel modificada de ordem zero.
 Além disso,
 
 $$
-G^{NS}(x,y;x',y') = \int_{-\infty}^{+\infty} \frac{1}{2\gamma_3} \frac{\gamma_3-\gamma_1}{\gamma_3+\gamma_1} \exp\!\left[-\gamma_3(y+y')\right] \exp\!\left[2i\pi\nu(x-x')\right] \,d\nu
+G_{NS}(x,y;x',y') = \int_{-\infty}^{+\infty} \frac{1}{2\gamma_3} \frac{\gamma_3-\gamma_1}{\gamma_3+\gamma_1} \times \exp\!\left[-\gamma_3(y+y')\right] \exp\!\left[2i\pi\nu(x-x')\right] \,d\nu
 $$
 
 O aspecto vetorial da equação integral (3) decorre do fato de que os modos guiados são híbridos. O guia de onda suporta a propagação de ondas com duas configurações possíveis de campo, classificadas como modos $E^{y}_{pq}$ e $E^{x}_{pq}$ [17], em que os subscritos $p$ e $q$ indicam o número de extremos do campo elétrico nas direções $x$ e $y$, respectivamente.

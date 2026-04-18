@@ -1,28 +1,19 @@
-Fase 0 — auditoria inicial do repositório
-Validar `docs/`, explicitar divergências entre documentação, código e estrutura real do projeto, e registrar pendências editoriais sem sobrescrever o conteúdo técnico já consolidado.
+Fase 1 — fundação documental
+Traduzir o problema físico do artigo, definir notação, variáveis, domínios, perfis de índice e exatamente quais figuras serão alvo da reprodução.
 
-Fase 1 — infraestrutura reproduzível mínima
-Separar casos em arquivos JSON, remover parâmetros fixos do executável, organizar a saída em `out/<caso>/`, manter scripts de build/execução em `scripts/` e adicionar ao menos um teste de fumaça reproduzível.
+Fase 2 — formulação computacional
+Transformar as equações do artigo em passos algorítmicos claros: discretização da região do guia, funções-base em degrau, montagem da matriz, avaliação do núcleo de Green e critério para encontrar β. O artigo diz explicitamente que a solução foi obtida com método dos momentos e funções-base do tipo step.
 
-Fase 2 — casos iniciais separados
-Trabalhar com três famílias de caso desde o início:
-- caso de sanidade homogêneo (`smoke_homogeneous`);
-- primeiro caso ligado ao artigo com difusão parabólica 1-D (`fig4_parabolic_1d`);
-- caso de sanidade com perfil circular 2-D (`smoke_circular_2d`).
+Fase 3 — primeiro caso simples
+Começar pelo caso mais estável: um perfil homogêneo simples, para validar montagem de matriz e busca modal antes de atacar a difusão.
 
-Fase 3 — núcleo numérico do artigo
-Implementar, com rastreabilidade:
-- núcleo de Green singular e não singular;
-- gradientes do núcleo;
-- montagem dos blocos da matriz do método dos momentos;
-- cálculo consistente de `det(A)`;
-- busca de `beta` por anulação de `det(A)`.
+Fase 4 — casos difundidos
+Implementar primeiro o perfil parabólico 1D e depois o caso circular 2D, porque eles aparecem claramente como estudos numéricos no artigo.
 
-Fase 4 — validação progressiva
-Usar primeiro o caso homogêneo para validar malha, montagem e busca modal; depois atacar os casos difundidos do artigo, sempre salvando CSV/JSON e logs por caso.
+Fase 5 — validação visual e quantitativa
+1.  **Digitalização de Referências**: Extrair dados das curvas publicadas no artigo (Goell, Yeh, etc.) usando uma ferramenta de digitalização de gráficos.
+2.  **Comparação Quantitativa**: Gerar gráficos sobrepostos das curvas simuladas e das referências digitalizadas. Calcular métricas de erro (e.g., erro quadrático médio).
+3.  **Verificação de Modos**: Para mapas de campo (Fig. 5), inspecionar visualmente a estrutura do campo (número de máximos e simetria) para confirmar a identificação do modo (e.g., $E^y_{21}$).
 
-Fase 5 — reprodução das figuras
-Comparar curvas e campos com as figuras do artigo, sobrepor resultados em scripts externos e registrar diferenças quantitativas e lacunas remanescentes.
-
-Fase 6 — fechamento do pacote
-Consolidar README, instruções de compilação, trilha de execução dos casos, limites do protótipo e vínculo entre equações, figuras, entradas e módulos do código.
+Fase 6 — empacotamento do repositório
+README forte, instruções de compilação, exemplos reproduzíveis, imagens, discussão de limitações e referências.

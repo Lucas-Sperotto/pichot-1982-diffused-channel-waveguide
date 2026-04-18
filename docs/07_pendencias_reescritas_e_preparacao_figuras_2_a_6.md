@@ -11,6 +11,8 @@ Nesta etapa, o repositório já passou a:
 
 Isso melhora substancialmente a rastreabilidade, mas ainda não equivale à validação científica final.
 
+Após a revisão documental da Fase 1, a definição de quais figuras entram no escopo, qual arquivo representa cada caso e como cada caso será resolvido deixou de estar dispersa: essa fundação agora está consolidada em `docs/03.3_exemplos.md` e `docs/03_resultados_numericos.md`.
+
 ## 1. O que deixou de ser pendência
 
 - a calibração básica dos casos das figuras 2, 3, 4 e 6 deixou de ser provisória: os parâmetros agora refletem os valores que aparecem nas imagens do artigo;
@@ -22,6 +24,8 @@ Isso melhora substancialmente a rastreabilidade, mas ainda não equivale à vali
 - a execução agora registra o residual modal estimado a partir do vetor quase-nulo de $A$.
 
 ## 2. Pendências centrais que continuam em aberto
+
+As pendências desta seção já não são lacunas de identificação de caso ou de organização documental. Elas pertencem ao fechamento científico e numérico das fases seguintes.
 
 - fechar a formulação vetorial completa do artigo no lugar do operador escalar/vetorial híbrido atual;
 - substituir a busca modal aproximada por um procedimento mais rigoroso de localização dos zeros de $\det(A)$;
@@ -101,3 +105,19 @@ Isso ainda é um marco de reprodutibilidade operacional, não a palavra final so
 2. inspecionar a seleção modal para reduzir o risco de capturar o modo errado perto do corte;
 3. comparar quantitativamente as curvas com referências externas digitizadas;
 4. revisar a figura 5 com critérios modais mais fortes para o modo $E^y_{21}$.
+
+## 6. Leitura para fechamento da Fase 1
+
+Do ponto de vista documental, as figuras 2 a 6 já podem ser consideradas fechadas para a Fase 1 quando observadas em conjunto com:
+
+- `data/input/figures/manifest_figures_2_to_6.csv`;
+- os arquivos JSON em `data/input/figures/`;
+- `docs/03.3_exemplos.md`;
+- `docs/03_resultados_numericos.md`.
+
+Isso significa que:
+
+- cada figura já possui um caso executável identificável;
+- cada caso já possui modo-alvo, perfil material e saída canônica declarados;
+- a diferença entre curvas principais, curvas de referência e mapa de campo já está documentada;
+- as pendências que restam nesta nota já não bloqueiam o fechamento documental da Fase 1.

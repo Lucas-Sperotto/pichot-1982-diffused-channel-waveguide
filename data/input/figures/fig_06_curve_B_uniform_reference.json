@@ -29,9 +29,9 @@
     "Ny": 5
   },
   "sweep": {
-    "v_start": 0.8,
-    "v_end": 3.4,
-    "v_step": 0.2
+    "v_start": 1.0,
+    "v_end": 5.0,
+    "v_step": 0.5
   },
   "solver": {
     "include_scalar_contrast": true,
@@ -40,5 +40,5 @@
     "boundary_quadrature_model": "gauss2",
     "boundary_subdivisions": 2
   },
-  "notes": "Curva B uniforme da figura 6 com indice medio n2=1.47, conforme indicado na propria figura do artigo."
+  "notes": "Curva B (referencia uniforme) para a figura 6. Parametros calibrados a partir do artigo: n1=1.0, n3=1.44, n_2_bar=1.47, a=2b."
 }
