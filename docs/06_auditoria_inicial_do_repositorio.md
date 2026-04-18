@@ -42,6 +42,8 @@ Atualização desta auditoria:
 - a Green escalar `G^S + G^NS` para o regime guiado com `y >= 0` e `y' >= 0` já foi implementada;
 - os gradientes de `G^S` já foram implementados em forma fechada;
 - os gradientes de `G^NS` estão disponíveis nesta etapa por diferença central do próprio kernel.
+- a matriz usada pelo executável já não é mais identidade pura: existe agora um operador escalar protótipo baseado apenas no termo `(k^2-k_3^2)G`, replicado nos blocos `E_x` e `E_y`;
+- a busca modal do executável já minimiza `|det(A)|` e grava esse residual nas saídas CSV, mas isso ainda não equivale à busca rigorosa dos zeros da formulação vetorial completa.
 
 Portanto, o projeto já saiu do estágio de infraestrutura pura, mas qualquer resultado modal ainda deve ser lido como protótipo, não como reprodução validada do artigo.
 

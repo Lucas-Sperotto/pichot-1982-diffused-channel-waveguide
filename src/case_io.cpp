@@ -142,8 +142,8 @@ void write_summary_file(const SimulationCase& sim_case,
     summary << "V_range: [" << sim_case.sweep.v_start << ", " << sim_case.sweep.v_end
             << "] step " << sim_case.sweep.v_step << "\n";
     summary << "notes: " << sim_case.notes << "\n";
-    summary << "solver_status: prototype_partial_green\n";
-    summary << "limitations: G^S e G^NS escalares ja estao implementadas no regime guiado com y >= 0 e y' >= 0; ainda faltam a montagem vetorial completa, os termos de fronteira/distribuicao e a busca modal rigorosa por det(A)=0.\n";
+    summary << "solver_status: prototype_scalar_operator\n";
+    summary << "limitations: G^S e G^NS escalares ja estao implementadas no regime guiado com y >= 0 e y' >= 0; a montagem atual usa apenas o termo escalar (k^2-k3^2)G, replica esse operador nos blocos Ex/Ey e busca minimo de |det(A)|; ainda faltam a formulacao vetorial completa, os termos de fronteira/distribuicao e a busca rigorosa por det(A)=0.\n";
 }
 
 } // namespace

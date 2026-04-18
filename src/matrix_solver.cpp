@@ -1,7 +1,97 @@
 #include "matrix_solver.h"
+
+#include "green_function.h"
+
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
+
+namespace {
+
+constexpr double kPivotTolerance = 1e-18;
+constexpr int kInitialSearchSamples = 7;
+constexpr int kRefinementSamples = 5;
+constexpr int kRefinementIterations = 4;
+
+double get_background_k_squared(const Waveguide& wg) {
+    const double k0 = wg.get_k0();
+    return k0 * k0 * wg.get_params().n3 * wg.get_params().n3;
+}
+
+double get_beta_margin(const Waveguide& wg, double beta_min, double beta_max) {
+    const double interval = beta_max - beta_min;
+    return std::max(1e-9 * wg.get_k0(), 1e-4 * interval);
+}
+
+Complex evaluate_green_between_cells(const Cell& observation,
+                                     const Cell& source,
+                                     double beta,
+                                     const Waveguide& wg) {
+    if (observation.id != source.id) {
+        return calculate_G(observation.cx, observation.cy, source.cx, source.cy, beta, wg);
+    }
+
+    // A auto-interação exige regularização da singularidade logarítmica de G^S.
+    // Nesta etapa usamos uma média em quatro subpontos dentro da célula fonte para
+    // manter o termo auditável e finito sem alegar uma quadratura exata do artigo.
+    const double x_offset = 0.25 * source.dx;
+    const double y_offset = 0.25 * source.dy;
+    Complex average(0.0, 0.0);
+
+    for (double sx : {-1.0, 1.0}) {
+        for (double sy : {-1.0, 1.0}) {
+            average += calculate_G(observation.cx,
+                                   observation.cy,
+                                   source.cx + sx * x_offset,
+                                   source.cy + sy * y_offset,
+                                   beta,
+                                   wg);
+        }
+    }
+
+    return average / 4.0;
+}
+
+struct SearchSample {
+    double beta;
+    double residual;
+};
+
+SearchSample evaluate_sample(double beta, const Waveguide& wg) {
+    return SearchSample{beta, calculate_determinant_magnitude(beta, wg)};
+}
+
+SearchSample best_sample_in_grid(double left,
+                                 double right,
+                                 int sample_count,
+                                 const Waveguide& wg,
+                                 double* next_left,
+                                 double* next_right) {
+    SearchSample best{left, std::numeric_limits<double>::infinity()};
+    std::vector<SearchSample> samples;
+    samples.reserve(sample_count);
+
+    for (int i = 0; i < sample_count; ++i) {
+        const double alpha = sample_count == 1 ? 0.0 : static_cast<double>(i) / (sample_count - 1);
+        samples.push_back(evaluate_sample(left + alpha * (right - left), wg));
+    }
+
+    auto best_it = std::min_element(
+        samples.begin(), samples.end(), [](const SearchSample& lhs, const SearchSample& rhs) {
+            return lhs.residual < rhs.residual;
+        });
+    best = *best_it;
+
+    const std::size_t best_index = static_cast<std::size_t>(best_it - samples.begin());
+    const std::size_t left_index = best_index == 0 ? 0 : best_index - 1;
+    const std::size_t right_index = std::min(best_index + 1, samples.size() - 1);
+    *next_left = samples[left_index].beta;
+    *next_right = samples[right_index].beta;
+    return best;
+}
+
+} // namespace
 
 ComplexMatrix::ComplexMatrix(std::size_t rows_in, std::size_t cols_in)
     : rows(rows_in), cols(cols_in), data(rows_in * cols_in, Complex(0.0, 0.0)) {}
@@ -15,10 +105,9 @@ const Complex& ComplexMatrix::at(std::size_t row, std::size_t col) const {
 }
 
 void build_matrix_A(ComplexMatrix& A, double beta, const Waveguide& wg) {
-    (void)beta;
-
     const auto& cells = wg.get_cells();
     const std::size_t N = cells.size();
+    const double background_k_squared = get_background_k_squared(wg);
 
     if (A.rows != 2 * N || A.cols != 2 * N) {
         throw std::runtime_error("Dimensões da matriz A incorretas.");
@@ -27,17 +116,30 @@ void build_matrix_A(ComplexMatrix& A, double beta, const Waveguide& wg) {
     std::fill(A.data.begin(), A.data.end(), Complex(0.0, 0.0));
 
     for (std::size_t i = 0; i < N; ++i) {
+        const Cell& observation = cells[i];
         for (std::size_t j = 0; j < N; ++j) {
+            const Cell& source = cells[j];
             Complex A_xx(0.0, 0.0);
             Complex A_xy(0.0, 0.0);
             Complex A_yx(0.0, 0.0);
             Complex A_yy(0.0, 0.0);
 
+            const double contrast_k_squared =
+                wg.get_k_squared(source.cx, source.cy) - background_k_squared;
+            const double source_area = source.dx * source.dy;
+            const Complex green_average = evaluate_green_between_cells(observation, source, beta, wg);
+            const Complex scalar_kernel = contrast_k_squared * source_area * green_average;
+
             if (i == j) {
-                // TODO: Substituir a identidade pelo operador integral discretizado do artigo.
                 A_xx = Complex(1.0, 0.0);
                 A_yy = Complex(1.0, 0.0);
             }
+
+            // Protótipo escalar: mantém apenas o termo (k^2 - k3^2) G e replica o mesmo
+            // operador nos blocos Ex e Ey. Os acoplamentos vetoriais A_xy/A_yx ainda
+            // dependem da montagem completa com grad' G e termos distribucionais.
+            A_xx -= scalar_kernel;
+            A_yy -= scalar_kernel;
 
             A.at(i, j) = A_xx;
             A.at(i, j + N) = A_xy;
@@ -68,7 +170,7 @@ Complex calculate_determinant(const ComplexMatrix& A) {
             }
         }
 
-        if (pivot_norm < 1e-18) {
+        if (pivot_norm < kPivotTolerance) {
             return Complex(0.0, 0.0);
         }
 
@@ -84,7 +186,7 @@ Complex calculate_determinant(const ComplexMatrix& A) {
 
         for (std::size_t row = pivot + 1; row < triangular.rows; ++row) {
             const Complex factor = triangular.at(row, pivot) / pivot_value;
-            if (std::abs(factor) < 1e-18) {
+            if (std::abs(factor) < kPivotTolerance) {
                 continue;
             }
 
@@ -101,15 +203,45 @@ Complex calculate_determinant(const ComplexMatrix& A) {
     return det;
 }
 
+double calculate_determinant_magnitude(double beta, const Waveguide& wg) {
+    try {
+        const std::size_t matrix_size = 2 * wg.get_cells().size();
+        ComplexMatrix A(matrix_size, matrix_size);
+        build_matrix_A(A, beta, wg);
+        const double residual = std::abs(calculate_determinant(A));
+        return std::isfinite(residual) ? residual : std::numeric_limits<double>::infinity();
+    } catch (const std::exception&) {
+        return std::numeric_limits<double>::infinity();
+    }
+}
 
 double find_beta_root(const Waveguide& wg, double beta_min, double beta_max) {
-    const std::size_t matrix_size = 2 * wg.get_cells().size();
-    ComplexMatrix A(matrix_size, matrix_size);
-    const double beta_mid = 0.5 * (beta_min + beta_max);
+    const double margin = get_beta_margin(wg, beta_min, beta_max);
+    double left = beta_min + margin;
+    double right = beta_max - margin;
 
-    build_matrix_A(A, beta_mid, wg);
-    (void)calculate_determinant(A);
+    if (!(left < right)) {
+        return 0.5 * (beta_min + beta_max);
+    }
 
-    // TODO: Implementar a busca de raízes de det(A) = 0 conforme o método do artigo.
-    return beta_mid;
+    double next_left = left;
+    double next_right = right;
+    SearchSample best = best_sample_in_grid(left, right, kInitialSearchSamples, wg, &next_left, &next_right);
+    left = next_left;
+    right = next_right;
+
+    for (int iteration = 0; iteration < kRefinementIterations; ++iteration) {
+        SearchSample refined =
+            best_sample_in_grid(left, right, kRefinementSamples, wg, &next_left, &next_right);
+        if (refined.residual < best.residual) {
+            best = refined;
+        }
+        left = next_left;
+        right = next_right;
+        if (!(left < right)) {
+            break;
+        }
+    }
+
+    return best.beta;
 }

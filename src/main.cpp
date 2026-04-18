@@ -48,7 +48,8 @@ int main(int argc, char* argv[]) {
         std::cout << "Iniciando simulação do caso '" << sim_case.case_id << "'..." << std::endl;
         std::cout << "Referência alvo: " << sim_case.article_figure
                   << " (" << sim_case.article_section << ")" << std::endl;
-        std::cout << "Aviso: o núcleo integral e a busca modal ainda estão em estágio de protótipo."
+        std::cout << "Aviso: a busca modal usa um operador escalar protótipo e minimiza |det(A)|,"
+                  << " ainda sem a montagem vetorial completa do artigo."
                   << std::endl;
 
         WaveguideParams params = sim_case.waveguide;
@@ -60,7 +61,7 @@ int main(int argc, char* argv[]) {
             throw std::runtime_error("Não foi possível criar o arquivo de resultados em " + output_dir);
         }
 
-        outfile << "case_id,article_figure,target_mode,V_param,lambda0,beta,B_norm\n";
+        outfile << "case_id,article_figure,target_mode,V_param,lambda0,beta,B_norm,det_abs\n";
         outfile << std::setprecision(16);
 
         bool profile_written = false;
@@ -83,12 +84,16 @@ int main(int argc, char* argv[]) {
             const double beta_min = k0 * params.n3;
             const double beta_max = k0 * params.n2m;
             const double beta_found = find_beta_root(wg, beta_min, beta_max);
+            const double det_abs = calculate_determinant_magnitude(beta_found, wg);
 
             const double beta_norm = beta_found / k0;
             const double B_norm = ((beta_norm * beta_norm) - params.n3 * params.n3) /
                                   (params.n2m * params.n2m - params.n3 * params.n3);
 
-            std::cout << "  -> beta encontrado: " << beta_found << ", B = " << B_norm << std::endl;
+            std::cout << "  -> beta encontrado: " << beta_found
+                      << ", B = " << B_norm
+                      << ", |det(A)| = " << det_abs
+                      << std::endl;
 
             outfile << sim_case.case_id << ","
                     << sim_case.article_figure << ","
@@ -96,7 +101,8 @@ int main(int argc, char* argv[]) {
                     << V << ","
                     << params.lambda0 << ","
                     << beta_found << ","
-                    << B_norm << "\n";
+                    << B_norm << ","
+                    << det_abs << "\n";
         }
 
         std::cout << "Simulação concluída. Resultados em " << (output_path / "results.csv") << std::endl;
