@@ -170,6 +170,15 @@ Os blocos da matriz são então armazenados na ordem:
 - canto inferior esquerdo: `A_yx`;
 - canto inferior direito: `A_yy`.
 
+Na implementação atual, essa montagem já foi separada explicitamente em quatro contribuições de código:
+
+- identidade residual;
+- termo volumétrico escalar;
+- termo regular de gradiente;
+- termo distributivo de fronteira.
+
+Essa separação é importante porque permite trocar, no futuro, o método numérico de cada bloco sem reescrever a montagem inteira.
+
 ### 12.5.1. Termo volumétrico escalar
 
 O primeiro termo da Eq. (3) é aproximado por célula-fonte constante:
@@ -178,6 +187,8 @@ O primeiro termo da Eq. (3) é aproximado por célula-fonte constante:
 - multiplica-se pela área da célula;
 - multiplica-se pela avaliação operacional do kernel de Green entre fonte e observação.
 
+O método numérico escolhido para este bloco é, portanto, uma aproximação peça-por-peça constante no domínio da célula, coerente com funções-base step e colocação no centro.
+
 ### 12.5.2. Termo regular de gradiente
 
 A parte regular da Eq. (4) entra via `get_regular_epsilon_grad_inverse`. No protótipo atual:
@@ -185,6 +196,8 @@ A parte regular da Eq. (4) entra via `get_regular_epsilon_grad_inverse`. No prot
 - o gradiente regular é avaliado no centro da célula-fonte;
 - ele acopla $E_x$ e $E_y$ aos termos com $\partial_{x'}G$ e $\partial_{y'}G$;
 - essa contribuição já é vetorial, mas ainda representa uma tradução operacional simplificada da formulação integral do artigo.
+
+O método numérico adotado aqui também é peça-por-peça constante por célula-fonte, usando derivadas do kernel avaliadas operacionalmente entre células.
 
 ### 12.5.3. Termo distributivo de fronteira
 
@@ -196,6 +209,8 @@ A parte singular da Eq. (4) é tratada fora da integral volumétrica:
 - `boundary_subdivisions` refina a integração por subsegmentos.
 
 Esse é um passo importante da Fase 2 porque torna auditável, em código, a presença da distribuição concentrada em $\mathcal{R}$, em vez de escondê-la dentro de um gradiente regularizado informal.
+
+O método numérico escolhido para este bloco é uma quadratura de linha por segmentos explícitos, com regra do ponto médio ou Gauss de dois pontos.
 
 ### 12.5.4. Auto-interação e regularização local
 

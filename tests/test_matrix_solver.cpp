@@ -175,6 +175,58 @@ void test_boundary_distribution_changes_homogeneous_operator() {
             "O termo de fronteira deveria introduzir acoplamentos cruzados via normal da borda.");
 }
 
+void test_full_operator_matches_sum_of_explicit_blocks() {
+    const Waveguide wg = make_small_parabolic_waveguide();
+    const double beta = 0.5 * wg.get_k0() * (wg.get_params().n2m + wg.get_params().n3);
+    const std::size_t matrix_size = 2 * wg.get_cells().size();
+
+    ComplexMatrix identity_only(matrix_size, matrix_size);
+    ComplexMatrix scalar_only(matrix_size, matrix_size);
+    ComplexMatrix regular_only(matrix_size, matrix_size);
+    ComplexMatrix boundary_only(matrix_size, matrix_size);
+    ComplexMatrix full_operator(matrix_size, matrix_size);
+
+    AssemblyOptions identity_options;
+    identity_options.include_scalar_contrast = false;
+    identity_options.include_regular_gradient = false;
+    identity_options.include_boundary_distribution = false;
+
+    AssemblyOptions scalar_options;
+    scalar_options.include_regular_gradient = false;
+    scalar_options.include_boundary_distribution = false;
+
+    AssemblyOptions regular_options;
+    regular_options.include_scalar_contrast = false;
+    regular_options.include_boundary_distribution = false;
+
+    AssemblyOptions boundary_options;
+    boundary_options.include_scalar_contrast = false;
+    boundary_options.include_regular_gradient = false;
+
+    AssemblyOptions full_options;
+
+    build_matrix_A(identity_only, beta, wg, identity_options);
+    build_matrix_A(scalar_only, beta, wg, scalar_options);
+    build_matrix_A(regular_only, beta, wg, regular_options);
+    build_matrix_A(boundary_only, beta, wg, boundary_options);
+    build_matrix_A(full_operator, beta, wg, full_options);
+
+    double max_mismatch = 0.0;
+    for (std::size_t row = 0; row < matrix_size; ++row) {
+        for (std::size_t col = 0; col < matrix_size; ++col) {
+            const Complex expected = identity_only.at(row, col) +
+                                     (scalar_only.at(row, col) - identity_only.at(row, col)) +
+                                     (regular_only.at(row, col) - identity_only.at(row, col)) +
+                                     (boundary_only.at(row, col) - identity_only.at(row, col));
+            max_mismatch =
+                std::max(max_mismatch, std::abs(full_operator.at(row, col) - expected));
+        }
+    }
+
+    require(max_mismatch < 1e-10,
+            "A montagem completa deveria coincidir com a soma explícita dos blocos identidade, escalar, regular e de fronteira.");
+}
+
 void test_boundary_quadrature_models_are_distinct() {
     const Waveguide wg = make_small_homogeneous_waveguide();
     const double beta = 0.5 * wg.get_k0() * (wg.get_params().n2m + wg.get_params().n3);
@@ -261,6 +313,7 @@ int main() {
     test_boundary_segment_extraction_is_explicit();
     test_parabolic_profile_introduces_regular_grad_coupling();
     test_boundary_distribution_changes_homogeneous_operator();
+    test_full_operator_matches_sum_of_explicit_blocks();
     test_boundary_quadrature_models_are_distinct();
     test_beta_search_reduces_modal_residual();
     test_mode_solution_returns_finite_coefficients_and_residual();

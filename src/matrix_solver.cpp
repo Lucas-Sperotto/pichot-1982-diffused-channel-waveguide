@@ -28,6 +28,26 @@ double get_beta_margin(const Waveguide& wg, double beta_min, double beta_max) {
     return std::max(1e-9 * wg.get_k0(), 1e-4 * interval);
 }
 
+struct KernelAverages {
+    Complex green_average{0.0, 0.0};
+    Complex dG_dx_average{0.0, 0.0};
+    Complex dG_dy_average{0.0, 0.0};
+};
+
+struct MatrixBlockContribution {
+    Complex xx{0.0, 0.0};
+    Complex xy{0.0, 0.0};
+    Complex yx{0.0, 0.0};
+    Complex yy{0.0, 0.0};
+};
+
+void accumulate_block(MatrixBlockContribution* total, const MatrixBlockContribution& increment) {
+    total->xx += increment.xx;
+    total->xy += increment.xy;
+    total->yx += increment.yx;
+    total->yy += increment.yy;
+}
+
 Complex evaluate_green_between_cells(const Cell& observation,
                                      const Cell& source,
                                      double beta,
@@ -121,6 +141,117 @@ Complex evaluate_dG_dy_source_between_cells(const Cell& observation,
     }
 
     return average / 4.0;
+}
+
+KernelAverages evaluate_kernel_averages_between_cells(const Cell& observation,
+                                                      const Cell& source,
+                                                      double beta,
+                                                      const Waveguide& wg) {
+    return KernelAverages{
+        evaluate_green_between_cells(observation, source, beta, wg),
+        evaluate_dG_dx_source_between_cells(observation, source, beta, wg),
+        evaluate_dG_dy_source_between_cells(observation, source, beta, wg)};
+}
+
+MatrixBlockContribution make_identity_contribution(bool is_diagonal) {
+    MatrixBlockContribution contribution;
+    if (is_diagonal) {
+        contribution.xx = Complex(1.0, 0.0);
+        contribution.yy = Complex(1.0, 0.0);
+    }
+    return contribution;
+}
+
+MatrixBlockContribution make_scalar_contrast_contribution(const Cell& source,
+                                                          const KernelAverages& kernels,
+                                                          double background_k_squared,
+                                                          const Waveguide& wg) {
+    const double source_area = source.dx * source.dy;
+    const double contrast_k_squared = wg.get_k_squared(source.cx, source.cy) - background_k_squared;
+    const Complex scalar_kernel = contrast_k_squared * source_area * kernels.green_average;
+
+    MatrixBlockContribution contribution;
+    contribution.xx = -scalar_kernel;
+    contribution.yy = -scalar_kernel;
+    return contribution;
+}
+
+MatrixBlockContribution make_regular_gradient_contribution(const Cell& source,
+                                                           const KernelAverages& kernels,
+                                                           const Waveguide& wg) {
+    const double source_area = source.dx * source.dy;
+    const Vector2 epsilon_grad_inverse = wg.get_regular_epsilon_grad_inverse(source.cx, source.cy);
+
+    MatrixBlockContribution contribution;
+    contribution.xx = -source_area * epsilon_grad_inverse.x * kernels.dG_dx_average;
+    contribution.xy = -source_area * epsilon_grad_inverse.y * kernels.dG_dx_average;
+    contribution.yx = -source_area * epsilon_grad_inverse.x * kernels.dG_dy_average;
+    contribution.yy = -source_area * epsilon_grad_inverse.y * kernels.dG_dy_average;
+    return contribution;
+}
+
+MatrixBlockContribution make_boundary_segment_contribution(const Cell& observation,
+                                                           const BoundarySegment& segment,
+                                                           double beta,
+                                                           const Waveguide& wg,
+                                                           const AssemblyOptions& options) {
+    const Vector2 tangent{-segment.outward_normal.y, segment.outward_normal.x};
+    const std::size_t subdivisions = std::max<std::size_t>(1, options.boundary_subdivisions);
+    const double subsegment_length = segment.length / static_cast<double>(subdivisions);
+    Complex integrated_dG_dx_boundary(0.0, 0.0);
+    Complex integrated_dG_dy_boundary(0.0, 0.0);
+
+    for (std::size_t subdivision = 0; subdivision < subdivisions; ++subdivision) {
+        const double sub_left = -0.5 * segment.length + subdivision * subsegment_length;
+        const double sub_right = sub_left + subsegment_length;
+
+        auto accumulate_boundary_sample = [&](double local_coordinate, double weight) {
+            const double x_source = segment.x_midpoint + local_coordinate * tangent.x;
+            const double y_source = segment.y_midpoint + local_coordinate * tangent.y;
+            integrated_dG_dx_boundary +=
+                weight * (calculate_dG_S_dx_source(observation.cx, observation.cy, x_source, y_source, beta, wg) +
+                          calculate_dG_NS_dx_source(observation.cx, observation.cy, x_source, y_source, beta, wg));
+            integrated_dG_dy_boundary +=
+                weight * (calculate_dG_S_dy_source(observation.cx, observation.cy, x_source, y_source, beta, wg) +
+                          calculate_dG_NS_dy_source(observation.cx, observation.cy, x_source, y_source, beta, wg));
+        };
+
+        if (options.boundary_quadrature_model == BoundaryQuadratureModel::MIDPOINT) {
+            const double midpoint = 0.5 * (sub_left + sub_right);
+            accumulate_boundary_sample(midpoint, subsegment_length);
+        } else {
+            const double midpoint = 0.5 * (sub_left + sub_right);
+            const double half_length = 0.5 * (sub_right - sub_left);
+            accumulate_boundary_sample(midpoint - kGaussPoint * half_length, half_length);
+            accumulate_boundary_sample(midpoint + kGaussPoint * half_length, half_length);
+        }
+    }
+
+    const Vector2 boundary_coefficient{
+        segment.epsilon_jump_factor * segment.outward_normal.x,
+        segment.epsilon_jump_factor * segment.outward_normal.y};
+
+    MatrixBlockContribution contribution;
+    contribution.xx = -boundary_coefficient.x * integrated_dG_dx_boundary;
+    contribution.xy = -boundary_coefficient.y * integrated_dG_dx_boundary;
+    contribution.yx = -boundary_coefficient.x * integrated_dG_dy_boundary;
+    contribution.yy = -boundary_coefficient.y * integrated_dG_dy_boundary;
+    return contribution;
+}
+
+MatrixBlockContribution make_boundary_distribution_contribution(const Cell& observation,
+                                                                const Cell& source,
+                                                                double beta,
+                                                                const Waveguide& wg,
+                                                                const AssemblyOptions& options) {
+    MatrixBlockContribution contribution;
+    for (const BoundarySegment& segment : wg.get_boundary_segments()) {
+        if (segment.cell_id != source.id) {
+            continue;
+        }
+        accumulate_block(&contribution, make_boundary_segment_contribution(observation, segment, beta, wg, options));
+    }
+    return contribution;
 }
 
 struct SearchSample {
@@ -389,109 +520,33 @@ void build_matrix_A(ComplexMatrix& A, double beta, const Waveguide& wg, const As
         const Cell& observation = cells[i];
         for (std::size_t j = 0; j < N; ++j) {
             const Cell& source = cells[j];
-            Complex A_xx(0.0, 0.0);
-            Complex A_xy(0.0, 0.0);
-            Complex A_yx(0.0, 0.0);
-            Complex A_yy(0.0, 0.0);
-
-            if (i == j) {
-                A_xx = Complex(1.0, 0.0);
-                A_yy = Complex(1.0, 0.0);
-            }
-
-            const double source_area = source.dx * source.dy;
+            MatrixBlockContribution total_contribution = make_identity_contribution(i == j);
 
             if (options.include_scalar_contrast || options.include_regular_gradient) {
-                const Complex green_average = evaluate_green_between_cells(observation, source, beta, wg);
-                const Complex dG_dx_average =
-                    evaluate_dG_dx_source_between_cells(observation, source, beta, wg);
-                const Complex dG_dy_average =
-                    evaluate_dG_dy_source_between_cells(observation, source, beta, wg);
+                const KernelAverages kernels =
+                    evaluate_kernel_averages_between_cells(observation, source, beta, wg);
 
                 if (options.include_scalar_contrast) {
-                    const double contrast_k_squared =
-                        wg.get_k_squared(source.cx, source.cy) - background_k_squared;
-                    const Complex scalar_kernel = contrast_k_squared * source_area * green_average;
-                    A_xx -= scalar_kernel;
-                    A_yy -= scalar_kernel;
+                    accumulate_block(
+                        &total_contribution,
+                        make_scalar_contrast_contribution(source, kernels, background_k_squared, wg));
                 }
 
                 if (options.include_regular_gradient) {
-                    const Vector2 epsilon_grad_inverse =
-                        wg.get_regular_epsilon_grad_inverse(source.cx, source.cy);
-                    const Complex regular_kernel_xx = source_area * epsilon_grad_inverse.x * dG_dx_average;
-                    const Complex regular_kernel_xy = source_area * epsilon_grad_inverse.y * dG_dx_average;
-                    const Complex regular_kernel_yx = source_area * epsilon_grad_inverse.x * dG_dy_average;
-                    const Complex regular_kernel_yy = source_area * epsilon_grad_inverse.y * dG_dy_average;
-
-                    A_xx -= regular_kernel_xx;
-                    A_xy -= regular_kernel_xy;
-                    A_yx -= regular_kernel_yx;
-                    A_yy -= regular_kernel_yy;
+                    accumulate_block(&total_contribution, make_regular_gradient_contribution(source, kernels, wg));
                 }
             }
 
             if (options.include_boundary_distribution) {
-                for (const BoundarySegment& segment : wg.get_boundary_segments()) {
-                    if (segment.cell_id != source.id) {
-                        continue;
-                    }
-
-                    const Vector2 tangent{-segment.outward_normal.y, segment.outward_normal.x};
-                    const std::size_t subdivisions = std::max<std::size_t>(1, options.boundary_subdivisions);
-                    const double subsegment_length = segment.length / static_cast<double>(subdivisions);
-                    Complex integrated_dG_dx_boundary(0.0, 0.0);
-                    Complex integrated_dG_dy_boundary(0.0, 0.0);
-
-                    for (std::size_t subdivision = 0; subdivision < subdivisions; ++subdivision) {
-                        const double sub_left = -0.5 * segment.length + subdivision * subsegment_length;
-                        const double sub_right = sub_left + subsegment_length;
-
-                        auto accumulate_boundary_sample = [&](double local_coordinate, double weight) {
-                            const double x_source = segment.x_midpoint + local_coordinate * tangent.x;
-                            const double y_source = segment.y_midpoint + local_coordinate * tangent.y;
-                            integrated_dG_dx_boundary +=
-                                weight * (calculate_dG_S_dx_source(
-                                              observation.cx, observation.cy, x_source, y_source, beta, wg) +
-                                          calculate_dG_NS_dx_source(
-                                              observation.cx, observation.cy, x_source, y_source, beta, wg));
-                            integrated_dG_dy_boundary +=
-                                weight * (calculate_dG_S_dy_source(
-                                              observation.cx, observation.cy, x_source, y_source, beta, wg) +
-                                          calculate_dG_NS_dy_source(
-                                              observation.cx, observation.cy, x_source, y_source, beta, wg));
-                        };
-
-                        if (options.boundary_quadrature_model == BoundaryQuadratureModel::MIDPOINT) {
-                            const double midpoint = 0.5 * (sub_left + sub_right);
-                            accumulate_boundary_sample(midpoint, subsegment_length);
-                        } else {
-                            const double midpoint = 0.5 * (sub_left + sub_right);
-                            const double half_length = 0.5 * (sub_right - sub_left);
-                            accumulate_boundary_sample(midpoint - kGaussPoint * half_length, half_length);
-                            accumulate_boundary_sample(midpoint + kGaussPoint * half_length, half_length);
-                        }
-                    }
-
-                    const Vector2 boundary_coefficient{
-                        segment.epsilon_jump_factor * segment.outward_normal.x,
-                        segment.epsilon_jump_factor * segment.outward_normal.y};
-                    const Complex boundary_kernel_xx = boundary_coefficient.x * integrated_dG_dx_boundary;
-                    const Complex boundary_kernel_xy = boundary_coefficient.y * integrated_dG_dx_boundary;
-                    const Complex boundary_kernel_yx = boundary_coefficient.x * integrated_dG_dy_boundary;
-                    const Complex boundary_kernel_yy = boundary_coefficient.y * integrated_dG_dy_boundary;
-
-                    A_xx -= boundary_kernel_xx;
-                    A_xy -= boundary_kernel_xy;
-                    A_yx -= boundary_kernel_yx;
-                    A_yy -= boundary_kernel_yy;
-                }
+                accumulate_block(
+                    &total_contribution,
+                    make_boundary_distribution_contribution(observation, source, beta, wg, options));
             }
 
-            A.at(i, j) = A_xx;
-            A.at(i, j + N) = A_xy;
-            A.at(i + N, j) = A_yx;
-            A.at(i + N, j + N) = A_yy;
+            A.at(i, j) = total_contribution.xx;
+            A.at(i, j + N) = total_contribution.xy;
+            A.at(i + N, j) = total_contribution.yx;
+            A.at(i + N, j + N) = total_contribution.yy;
         }
     }
 }
