@@ -18,19 +18,36 @@ std::string read_text_file(const std::string& path) {
     return buffer.str();
 }
 
-std::size_t find_key_position(const std::string& text, const std::string& key) {
+std::size_t find_json_key_position(const std::string& text, const std::string& key) {
     const std::string token = "\"" + key + "\"";
-    const std::size_t position = text.find(token);
+    std::size_t search_position = 0;
+
+    while (true) {
+        const std::size_t position = text.find(token, search_position);
+        if (position == std::string::npos) {
+            return std::string::npos;
+        }
+
+        const std::size_t after_token = position + token.size();
+        const std::size_t next_non_space = text.find_first_not_of(" \t\r\n", after_token);
+        if (next_non_space != std::string::npos && text[next_non_space] == ':') {
+            return position;
+        }
+
+        search_position = after_token;
+    }
+}
+
+std::size_t find_key_position(const std::string& text, const std::string& key) {
+    const std::size_t position = find_json_key_position(text, key);
     if (position == std::string::npos) {
         throw std::runtime_error("Chave obrigatória ausente no JSON: " + key);
     }
-
     return position;
 }
 
 std::size_t find_optional_key_position(const std::string& text, const std::string& key) {
-    const std::string token = "\"" + key + "\"";
-    return text.find(token);
+    return find_json_key_position(text, key);
 }
 
 bool has_key(const std::string& text, const std::string& key) {
@@ -147,8 +164,8 @@ StudyKind parse_study_kind(const std::string& value) {
     if (value == "dispersion_curve") {
         return StudyKind::DISPERSION_CURVE;
     }
-    if (value == "field_map_preparation") {
-        return StudyKind::FIELD_MAP_PREPARATION;
+    if (value == "field_map" || value == "field_map_preparation") {
+        return StudyKind::FIELD_MAP;
     }
 
     throw std::runtime_error("Tipo de estudo desconhecido: " + value);
@@ -185,9 +202,12 @@ void validate_case(const SimulationCase& sim_case) {
     if (sim_case.assembly_options.boundary_subdivisions == 0) {
         throw std::runtime_error("boundary_subdivisions deve ser positivo.");
     }
-    if (sim_case.study_kind == StudyKind::FIELD_MAP_PREPARATION) {
+    if (sim_case.study_kind == StudyKind::FIELD_MAP) {
         if (sim_case.field_map.lambda0 <= 0.0) {
             throw std::runtime_error("field_map.lambda0 deve ser positivo.");
+        }
+        if (sim_case.field_map.beta_over_k0 < 0.0) {
+            throw std::runtime_error("field_map.beta_over_k0 não pode ser negativo.");
         }
         if (sim_case.field_map.sample_nx == 0 || sim_case.field_map.sample_ny == 0) {
             throw std::runtime_error("field_map.sample_nx e field_map.sample_ny devem ser positivos.");
@@ -216,7 +236,7 @@ void write_summary_file(const SimulationCase& sim_case,
     summary << "canonical_csv_name: " << sim_case.output.canonical_csv_name << "\n";
     summary << "Nx: " << sim_case.discretization.Nx << "\n";
     summary << "Ny: " << sim_case.discretization.Ny << "\n";
-    summary << "V_range: [" << sim_case.sweep.v_start << ", " << sim_case.sweep.v_end
+    summary << "article_x_range: [" << sim_case.sweep.v_start << ", " << sim_case.sweep.v_end
             << "] step " << sim_case.sweep.v_step << "\n";
     summary << "include_scalar_contrast: " << (sim_case.assembly_options.include_scalar_contrast ? "true" : "false")
             << "\n";
@@ -227,15 +247,16 @@ void write_summary_file(const SimulationCase& sim_case,
     summary << "boundary_quadrature_model: "
             << boundary_quadrature_model_to_cstr(sim_case.assembly_options.boundary_quadrature_model) << "\n";
     summary << "boundary_subdivisions: " << sim_case.assembly_options.boundary_subdivisions << "\n";
-    if (sim_case.study_kind == StudyKind::FIELD_MAP_PREPARATION) {
+    if (sim_case.study_kind == StudyKind::FIELD_MAP) {
         summary << "field_map_lambda0: " << sim_case.field_map.lambda0 << "\n";
+        summary << "field_map_beta_over_k0: " << sim_case.field_map.beta_over_k0 << "\n";
         summary << "field_map_sample_nx: " << sim_case.field_map.sample_nx << "\n";
         summary << "field_map_sample_ny: " << sim_case.field_map.sample_ny << "\n";
         summary << "field_map_component: " << sim_case.field_map.component << "\n";
     }
     summary << "notes: " << sim_case.notes << "\n";
-    summary << "solver_status: prototype_boundary_segments_operator\n";
-    summary << "limitations: G^S e G^NS escalares ja estao implementadas no regime guiado com y >= 0 e y' >= 0; a montagem atual usa o termo (k^2-k3^2)G, a parte volumetrica regular de eps*grad(1/eps) multiplicando grad'G e uma aproximacao explicita do termo de fronteira por segmentos da borda da malha; a formulacao vetorial completa, um tratamento mais rigoroso da singularidade/quadra da fronteira e a busca rigorosa por det(A)=0 ainda permanecem pendentes.\n";
+    summary << "solver_status: boundary_segments_operator_with_null_vector_mode_estimation\n";
+    summary << "limitations: G^S e G^NS escalares ja estao implementadas no regime guiado com y >= 0 e y' >= 0; a montagem atual usa o termo (k^2-k3^2)G, a parte volumetrica regular de eps*grad(1/eps) multiplicando grad'G e uma aproximacao explicita do termo de fronteira por segmentos da borda da malha; o vetor modal e estimado por menor singularidade do operador discretizado, mas a formulacao vetorial completa do artigo, um tratamento mais rigoroso da singularidade/quadratura da fronteira e a busca rigorosa dos zeros exatos de det(A) ainda permanecem pendentes.\n";
 }
 
 } // namespace
@@ -316,6 +337,9 @@ SimulationCase load_case_from_json(const std::string& path) {
         if (has_key(field_map, "lambda0")) {
             sim_case.field_map.lambda0 = extract_double(field_map, "lambda0");
         }
+        if (has_key(field_map, "beta_over_k0")) {
+            sim_case.field_map.beta_over_k0 = extract_double(field_map, "beta_over_k0");
+        }
         if (has_key(field_map, "sample_nx")) {
             sim_case.field_map.sample_nx = extract_size(field_map, "sample_nx");
         }
@@ -348,8 +372,8 @@ std::string study_kind_to_string(StudyKind study_kind) {
     switch (study_kind) {
         case StudyKind::DISPERSION_CURVE:
             return "dispersion_curve";
-        case StudyKind::FIELD_MAP_PREPARATION:
-            return "field_map_preparation";
+        case StudyKind::FIELD_MAP:
+            return "field_map";
     }
 
     throw std::runtime_error("StudyKind inválido.");

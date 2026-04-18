@@ -7,7 +7,7 @@
 
 enum class StudyKind {
     DISPERSION_CURVE,
-    FIELD_MAP_PREPARATION
+    FIELD_MAP
 };
 
 struct SweepRange {
@@ -25,6 +25,7 @@ struct OutputSpec {
 
 struct FieldMapSpec {
     double lambda0 = 0.0;
+    double beta_over_k0 = 0.0;
     std::size_t sample_nx = 0;
     std::size_t sample_ny = 0;
     std::string component = "Ey";

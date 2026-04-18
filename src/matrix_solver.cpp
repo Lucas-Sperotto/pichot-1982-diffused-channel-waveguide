@@ -13,6 +13,8 @@ constexpr double kPivotTolerance = 1e-18;
 constexpr int kInitialSearchSamples = 7;
 constexpr int kRefinementSamples = 5;
 constexpr int kRefinementIterations = 4;
+constexpr int kInverseIterations = 6;
+constexpr int kModalRefinementSamples = 3;
 
 constexpr double kGaussPoint = 0.5773502691896257;
 
@@ -128,6 +130,152 @@ struct SearchSample {
 
 SearchSample evaluate_sample(double beta, const Waveguide& wg, const AssemblyOptions& options) {
     return SearchSample{beta, calculate_determinant_magnitude(beta, wg, options)};
+}
+
+double squared_norm(const std::vector<Complex>& values) {
+    double result = 0.0;
+    for (const Complex& value : values) {
+        result += std::norm(value);
+    }
+    return result;
+}
+
+double vector_norm(const std::vector<Complex>& values) {
+    return std::sqrt(squared_norm(values));
+}
+
+std::vector<Complex> make_initial_mode_guess(std::size_t size) {
+    std::vector<Complex> guess(size, Complex(0.0, 0.0));
+    for (std::size_t i = 0; i < size; ++i) {
+        guess[i] = Complex((i % 2 == 0) ? 1.0 : -1.0, 0.0);
+    }
+    return guess;
+}
+
+void normalize_vector(std::vector<Complex>* values) {
+    const double norm = vector_norm(*values);
+    if (norm <= kPivotTolerance) {
+        throw std::runtime_error("Não foi possível normalizar o vetor modal.");
+    }
+
+    for (Complex& value : *values) {
+        value /= norm;
+    }
+}
+
+std::vector<Complex> multiply_matrix_vector(const ComplexMatrix& A, const std::vector<Complex>& x) {
+    if (A.cols != x.size()) {
+        throw std::runtime_error("Dimensões incompatíveis em multiply_matrix_vector.");
+    }
+
+    std::vector<Complex> result(A.rows, Complex(0.0, 0.0));
+    for (std::size_t row = 0; row < A.rows; ++row) {
+        Complex sum(0.0, 0.0);
+        for (std::size_t col = 0; col < A.cols; ++col) {
+            sum += A.at(row, col) * x[col];
+        }
+        result[row] = sum;
+    }
+    return result;
+}
+
+ComplexMatrix build_normal_matrix(const ComplexMatrix& A) {
+    ComplexMatrix normal(A.cols, A.cols);
+    for (std::size_t row = 0; row < A.rows; ++row) {
+        for (std::size_t left = 0; left < A.cols; ++left) {
+            const Complex conjugated = std::conj(A.at(row, left));
+            for (std::size_t right = 0; right < A.cols; ++right) {
+                normal.at(left, right) += conjugated * A.at(row, right);
+            }
+        }
+    }
+    return normal;
+}
+
+std::vector<Complex> solve_linear_system(ComplexMatrix A, std::vector<Complex> b) {
+    if (A.rows != A.cols || A.rows != b.size()) {
+        throw std::runtime_error("Dimensões incompatíveis em solve_linear_system.");
+    }
+
+    for (std::size_t pivot = 0; pivot < A.rows; ++pivot) {
+        std::size_t pivot_row = pivot;
+        double pivot_norm = std::abs(A.at(pivot, pivot));
+        for (std::size_t row = pivot + 1; row < A.rows; ++row) {
+            const double candidate = std::abs(A.at(row, pivot));
+            if (candidate > pivot_norm) {
+                pivot_norm = candidate;
+                pivot_row = row;
+            }
+        }
+
+        if (pivot_norm < kPivotTolerance) {
+            throw std::runtime_error("Sistema linear singular ao estimar o vetor modal.");
+        }
+
+        if (pivot_row != pivot) {
+            for (std::size_t col = 0; col < A.cols; ++col) {
+                std::swap(A.at(pivot, col), A.at(pivot_row, col));
+            }
+            std::swap(b[pivot], b[pivot_row]);
+        }
+
+        const Complex pivot_value = A.at(pivot, pivot);
+        for (std::size_t row = pivot + 1; row < A.rows; ++row) {
+            const Complex factor = A.at(row, pivot) / pivot_value;
+            if (std::abs(factor) < kPivotTolerance) {
+                continue;
+            }
+            for (std::size_t col = pivot; col < A.cols; ++col) {
+                A.at(row, col) -= factor * A.at(pivot, col);
+            }
+            b[row] -= factor * b[pivot];
+        }
+    }
+
+    std::vector<Complex> x(A.rows, Complex(0.0, 0.0));
+    for (std::size_t offset = 0; offset < A.rows; ++offset) {
+        const std::size_t row = A.rows - 1 - offset;
+        Complex rhs = b[row];
+        for (std::size_t col = row + 1; col < A.cols; ++col) {
+            rhs -= A.at(row, col) * x[col];
+        }
+        x[row] = rhs / A.at(row, row);
+    }
+    return x;
+}
+
+std::vector<Complex> estimate_smallest_singular_vector(const ComplexMatrix& A) {
+    if (A.cols == 0) {
+        return {};
+    }
+
+    ComplexMatrix normal = build_normal_matrix(A);
+    double diagonal_scale = 0.0;
+    for (std::size_t i = 0; i < normal.rows; ++i) {
+        diagonal_scale += std::abs(normal.at(i, i));
+    }
+    diagonal_scale = std::max(diagonal_scale / static_cast<double>(normal.rows), 1.0);
+    const double regularization = std::max(1e-14, 1e-12 * diagonal_scale);
+    for (std::size_t i = 0; i < normal.rows; ++i) {
+        normal.at(i, i) += regularization;
+    }
+
+    std::vector<Complex> iterate = make_initial_mode_guess(A.cols);
+    normalize_vector(&iterate);
+
+    for (int iteration = 0; iteration < kInverseIterations; ++iteration) {
+        std::vector<Complex> next = solve_linear_system(normal, iterate);
+        normalize_vector(&next);
+        iterate.swap(next);
+    }
+
+    return iterate;
+}
+
+double calculate_modal_residual_from_solution(const ComplexMatrix& A, const std::vector<Complex>& coefficients) {
+    const std::vector<Complex> residual_vector = multiply_matrix_vector(A, coefficients);
+    const double denominator = std::max(vector_norm(coefficients), kPivotTolerance);
+    return vector_norm(residual_vector) / denominator;
 }
 
 SearchSample best_sample_in_grid(double left,
@@ -378,6 +526,73 @@ double calculate_determinant_magnitude(double beta, const Waveguide& wg, const A
     } catch (const std::exception&) {
         return std::numeric_limits<double>::infinity();
     }
+}
+
+ModeSolution solve_mode_at_beta(double beta, const Waveguide& wg) {
+    return solve_mode_at_beta(beta, wg, AssemblyOptions{});
+}
+
+ModeSolution solve_mode_at_beta(double beta, const Waveguide& wg, const AssemblyOptions& options) {
+    const std::size_t matrix_size = 2 * wg.get_cells().size();
+    ComplexMatrix A(matrix_size, matrix_size);
+    build_matrix_A(A, beta, wg, options);
+
+    ModeSolution solution;
+    solution.beta = beta;
+    solution.determinant_magnitude = std::abs(calculate_determinant(A));
+    solution.coefficients = estimate_smallest_singular_vector(A);
+    solution.modal_residual = calculate_modal_residual_from_solution(A, solution.coefficients);
+    return solution;
+}
+
+double calculate_modal_residual(double beta, const Waveguide& wg) {
+    return calculate_modal_residual(beta, wg, AssemblyOptions{});
+}
+
+double calculate_modal_residual(double beta, const Waveguide& wg, const AssemblyOptions& options) {
+    try {
+        const ModeSolution solution = solve_mode_at_beta(beta, wg, options);
+        return std::isfinite(solution.modal_residual) ? solution.modal_residual
+                                                      : std::numeric_limits<double>::infinity();
+    } catch (const std::exception&) {
+        return std::numeric_limits<double>::infinity();
+    }
+}
+
+double refine_beta_with_modal_residual(double beta_initial,
+                                       double beta_min,
+                                       double beta_max,
+                                       const Waveguide& wg) {
+    return refine_beta_with_modal_residual(beta_initial, beta_min, beta_max, wg, AssemblyOptions{});
+}
+
+double refine_beta_with_modal_residual(double beta_initial,
+                                       double beta_min,
+                                       double beta_max,
+                                       const Waveguide& wg,
+                                       const AssemblyOptions& options) {
+    const double interval = beta_max - beta_min;
+    const double margin = std::max(get_beta_margin(wg, beta_min, beta_max), 0.01 * interval);
+    const double left = std::max(beta_min + kPivotTolerance, beta_initial - margin);
+    const double right = std::min(beta_max - kPivotTolerance, beta_initial + margin);
+    if (!(left < right)) {
+        return beta_initial;
+    }
+
+    double best_beta = beta_initial;
+    double best_residual = std::numeric_limits<double>::infinity();
+    for (int index = 0; index < kModalRefinementSamples; ++index) {
+        const double alpha = kModalRefinementSamples == 1
+                                 ? 0.0
+                                 : static_cast<double>(index) / (kModalRefinementSamples - 1);
+        const double beta = left + alpha * (right - left);
+        const double residual = calculate_modal_residual(beta, wg, options);
+        if (residual < best_residual) {
+            best_residual = residual;
+            best_beta = beta;
+        }
+    }
+    return best_beta;
 }
 
 double find_beta_root(const Waveguide& wg, double beta_min, double beta_max) {

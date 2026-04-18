@@ -6,18 +6,18 @@
     "target_mode": "E^y_21"
   },
   "study": {
-    "kind": "field_map_preparation"
+    "kind": "field_map"
   },
   "output": {
     "family": "figures",
     "figure_id": "fig_05",
-    "curve_id": "field_map_preparation",
-    "canonical_csv_name": "field_sampling_grid.csv"
+    "curve_id": "field_map_ey21",
+    "canonical_csv_name": "field_map.csv"
   },
   "materials": {
     "n1": 1.0,
-    "n3": 1.47,
-    "n2m": 1.49
+    "n3": 1.44,
+    "n2m": 1.5
   },
   "geometry": {
     "a": 2.22e-6,
@@ -35,6 +35,7 @@
   },
   "field_map": {
     "lambda0": 6.328e-7,
+    "beta_over_k0": 1.4447,
     "sample_nx": 41,
     "sample_ny": 21,
     "component": "Ey"
@@ -46,5 +47,5 @@
     "boundary_quadrature_model": "gauss2",
     "boundary_subdivisions": 2
   },
-  "notes": "Preparacao da figura 5. O CSV gerado nesta etapa descreve a grade de amostragem e o estado pendente da reconstrucao de campo; os valores de |Ey| ainda dependem da implementacao vetorial completa."
+  "notes": "Figura 5 calibrada pela propria imagem do artigo: lambda0=0.6328 um, beta/k0=1.4447, a=2.22 um, n1=1.0, n3=1.44 e n2m=1.5. O campo ainda vem da discretizacao atual do operador, mas deixa de ser apenas uma grade vazia."
 }

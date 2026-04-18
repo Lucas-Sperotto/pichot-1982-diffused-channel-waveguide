@@ -1,101 +1,103 @@
-# 07. Pendências reescritas e preparação das figuras 2 a 6
+# 07. Pendências reescritas para as figuras 2 a 6
 
-Este documento substitui uma lista genérica de pendências por um quadro operacional voltado à geração dos CSVs das figuras 2 a 6.
+Este documento deixa de tratar as figuras 2 a 6 apenas como “preparação de I/O”.
 
-O foco aqui não é declarar que as figuras já foram reproduzidas, e sim deixar explícito:
+Nesta etapa, o repositório já passou a:
 
-- quais entradas já existem;
-- quais saídas canônicas já podem ser geradas;
-- o que ainda é apenas protótipo;
-- o que ainda bloqueia validação científica.
+- usar parâmetros geométricos e materiais lidos das próprias figuras do artigo;
+- gerar curvas de dispersão com a abcissa normalizada do artigo;
+- registrar, além de `|det(A)|`, um residual modal baseado no vetor quase-nulo do sistema discretizado;
+- reconstruir um mapa de campo para a figura 5 a partir de um vetor modal estimado.
 
-## 1. Estado consolidado da infraestrutura
+Isso melhora substancialmente a rastreabilidade, mas ainda não equivale à validação científica final.
 
-Neste estágio o repositório já dispõe de:
+## 1. O que deixou de ser pendência
 
-- casos estruturados em `data/input/figures/*.json`;
-- um índice de preparação em `data/input/figures/manifest_figures_2_to_6.csv`;
-- saídas organizadas em `out/figures/<figure_id>/<case_id>/`;
-- um `output_manifest.json` por execução, além de `input_snapshot.json`, `run_summary.txt`, `profile_samples.csv` e do CSV canônico do estudo;
-- geração em lote por `scripts/generate_figures_2_to_6_csvs.sh`.
+- a calibração básica dos casos das figuras 2, 3, 4 e 6 deixou de ser provisória: os parâmetros agora refletem os valores que aparecem nas imagens do artigo;
+- a figura 5 deixou de gerar apenas uma grade vazia e passou a produzir `field_map.csv`, `field_sampling_grid.csv`, `mode_coefficients.csv` e `field_map_status.txt`;
+- a saída das curvas deixou de depender de uma abcissa interna inconsistente e passou a usar a variável normalizada mostrada nas figuras, isto é,
+  $$
+  \frac{2b}{\lambda_0}\sqrt{n_\text{alto}^2-n_\text{baixo}^2};
+  $$
+- a execução agora registra o residual modal estimado a partir do vetor quase-nulo de $A$.
 
-Isso resolve a preparação de I/O para a campanha das figuras 2 a 6, mas não elimina as pendências numéricas do solver.
+## 2. Pendências centrais que continuam em aberto
 
-## 2. Pendências centrais que ainda afetam todas as figuras
-
-- fechar a formulação vetorial completa do artigo em lugar do operador prototípico atual;
-- refinar a busca modal além do critério atual de mínimo de `|det(A)|`;
+- fechar a formulação vetorial completa do artigo no lugar do operador escalar/vetorial híbrido atual;
+- substituir a busca modal aproximada por um procedimento mais rigoroso de localização dos zeros de $\det(A)$;
 - melhorar a regularização e a quadratura da contribuição de fronteira;
-- medir convergência com refinamento de malha antes de declarar qualquer curva como validada;
-- implementar reconstrução de campo para destravar a figura 5;
-- confirmar, a partir do artigo, os parâmetros canônicos finais de cada figura e de cada curva de comparação.
+- medir convergência de malha antes de declarar as curvas como reproduções finais;
+- comparar quantitativamente as curvas geradas com referências externas digitizadas ou tabuladas;
+- verificar se a estrutura modal estimada para a figura 5 representa fielmente o modo $E^y_{21}$, e não apenas um vetor quase-nulo no beta informado pelo artigo.
 
-## 3. Quadro por figura
+## 3. Estado por figura
 
 ### Figura 2
 
-- entrada preparada: `data/input/figures/fig_02_homogeneous_rectangular_eq_integral.json`;
-- saída canônica esperada: `dispersion_curve.csv`;
-- diretório-alvo: `out/figures/fig_02/fig_02_homogeneous_rectangular_eq_integral/`;
-- estado atual: executável com parâmetros provisórios;
-- bloqueio principal: confirmar os parâmetros físicos históricos usados na comparação.
+- entrada: `data/input/figures/fig_02_homogeneous_rectangular_eq_integral.json`;
+- parâmetros calibrados na própria figura: `n1 = n3 = 1.01`, `n2 = 1.05`, `a = 2b`;
+- saída canônica: `dispersion_curve.csv`;
+- novo status: caso calibrado em parâmetros e escala;
+- pendência remanescente: comparação quantitativa com Goell, FEM, Marcatili e effective index.
 
 ### Figura 3
 
-- entrada preparada: `data/input/figures/fig_03_homogeneous_channel_eq_integral.json`;
-- saída canônica esperada: `dispersion_curve.csv`;
-- diretório-alvo: `out/figures/fig_03/fig_03_homogeneous_channel_eq_integral/`;
-- estado atual: executável com geometria ainda sujeita a calibração;
-- bloqueio principal: alinhar a geometria do guia com a configuração do artigo.
+- entrada: `data/input/figures/fig_03_homogeneous_channel_eq_integral.json`;
+- parâmetros calibrados na própria figura: `n1 = 1.0`, `n2 = 1.5`, `n3 = 1.43`, `a = b`;
+- saída canônica: `dispersion_curve.csv`;
+- novo status: caso calibrado em parâmetros e escala;
+- pendência remanescente: validar quantitativamente a curva contra Yeh, Marcatili e effective index.
 
 ### Figura 4
 
-- entradas preparadas:
+- entradas:
   - `data/input/figures/fig_04_curve_A_diffused_1d_eq_integral.json`;
   - `data/input/figures/fig_04_curve_B_uniform_reference.json`;
-- saídas canônicas esperadas: um `dispersion_curve.csv` por curva;
-- diretórios-alvo:
-  - `out/figures/fig_04/fig_04_curve_A_diffused_1d_eq_integral/`;
-  - `out/figures/fig_04/fig_04_curve_B_uniform_reference/`;
-- estado atual: é a família mais madura da coleção preparada;
-- bloqueio principal: validar quantitativamente a curva protótipo contra a figura original.
+- parâmetros calibrados na própria figura:
+  - curva A: `n1 = 1.0`, `n3 = 1.44`, `n2m = 1.50`, `a = 2b`;
+  - curva B: `n1 = 1.0`, `n3 = 1.44`, `\bar{n}_2 = 1.48`, `a = 2b`;
+- saída canônica: `dispersion_curve.csv` para cada curva;
+- novo status: família calibrada em parâmetros e escala;
+- pendência remanescente: confronto quantitativo com a curva de Yeh e com o método do índice efetivo modificado.
 
 ### Figura 5
 
-- entrada preparada: `data/input/figures/fig_05_field_map_preparation.json`;
-- saída canônica desta etapa: `field_sampling_grid.csv`;
-- diretório-alvo: `out/figures/fig_05/fig_05_field_map_preparation/`;
-- estado atual: a malha de amostragem já é gerada com `status = pending_field_reconstruction`;
-- bloqueio principal: reconstrução de campo para preencher `|E_y(x,y)|`.
+- entrada: `data/input/figures/fig_05_field_map_preparation.json`;
+- parâmetros calibrados na própria figura: `lambda0 = 0.6328 um`, `beta/k0 = 1.4447`, `a = 2.22 um`, `a = 2b`, `n1 = 1.0`, `n3 = 1.44`, `n2m = 1.5`;
+- saídas canônicas e auxiliares:
+  - `field_map.csv`;
+  - `field_sampling_grid.csv`;
+  - `mode_coefficients.csv`;
+  - `field_map_status.txt`;
+- novo status: a figura deixou de ser apenas um grid de amostragem;
+- pendência remanescente: confirmar se o campo reconstruído representa fielmente o modo $E^y_{21}$ da formulação completa do artigo.
 
 ### Figura 6
 
-- entradas preparadas:
+- entradas:
   - `data/input/figures/fig_06_curve_A_diffused_2d_eq_integral.json`;
   - `data/input/figures/fig_06_curve_B_uniform_reference.json`;
-- saídas canônicas esperadas: um `dispersion_curve.csv` por curva;
-- diretórios-alvo:
-  - `out/figures/fig_06/fig_06_curve_A_diffused_2d_eq_integral/`;
-  - `out/figures/fig_06/fig_06_curve_B_uniform_reference/`;
-- estado atual: executável, porém ainda dependente de calibração do caso uniforme de referência;
-- bloqueio principal: confirmar a parametrização média adotada na curva B.
+- parâmetros calibrados na própria figura:
+  - curva A: `n1 = 1.0`, `n3 = 1.44`, `n2m = 1.50`, `a = 2b`;
+  - curva B: `n1 = 1.0`, `n3 = 1.44`, `\bar{n}_2 = 1.47`, `a = 2b`;
+- saída canônica: `dispersion_curve.csv` para cada curva;
+- novo status: casos calibrados em parâmetros e escala;
+- pendência remanescente: validação quantitativa da separação entre as curvas A e B e teste de convergência.
 
-## 4. Critério mínimo para considerar uma figura “preparada”
+## 4. Critério mínimo atualizado para considerar uma figura “resolvida nesta etapa”
 
-Uma figura passa a ser considerada preparada quando:
+Uma figura é considerada resolvida nesta etapa quando:
 
-- existe pelo menos um caso JSON identificado por `figure_id`;
-- o gerador em lote consegue produzir o diretório de saída previsto;
-- o CSV canônico da figura é emitido com nome estável;
-- o `output_manifest.json` deixa claro o status do artefato;
-- o documento de pendências registra o que ainda é protótipo.
+- usa os parâmetros visíveis na própria figura do artigo;
+- gera um CSV canônico com a mesma normalização de eixos mostrada no artigo;
+- deixa explícito, via `output_manifest.json` e `run_summary.txt`, o status numérico do artefato;
+- no caso da figura 5, produz valores de campo e não apenas uma grade de amostragem.
 
-Isso ainda não equivale a “figura validada”.
+Isso ainda é um marco de reprodutibilidade operacional, não a palavra final sobre fidelidade científica.
 
-## 5. Ordem recomendada de trabalho a partir daqui
+## 5. Próxima ordem de ataque
 
-1. manter a coleção das figuras 2 a 6 como fonte canônica de entradas reproduzíveis;
-2. usar `scripts/generate_figures_2_to_6_csvs.sh` como verificação rápida da infraestrutura;
-3. atacar primeiro convergência e calibração das figuras 2, 3, 4 e 6, que já produzem curvas;
-4. tratar a figura 5 como caso preparado de I/O, mas ainda bloqueado por física ausente;
-5. só iniciar comparação quantitativa figura a figura depois que a sensibilidade à malha estiver melhor controlada.
+1. medir convergência de malha para as figuras 2, 3, 4 e 6 com a nova abcissa calibrada;
+2. inspecionar a seleção modal para reduzir o risco de capturar o modo errado perto do corte;
+3. comparar quantitativamente as curvas com referências externas digitizadas;
+4. revisar a figura 5 com critérios modais mais fortes para o modo $E^y_{21}$.

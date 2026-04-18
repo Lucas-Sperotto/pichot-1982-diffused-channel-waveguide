@@ -15,13 +15,13 @@
     "canonical_csv_name": "dispersion_curve.csv"
   },
   "materials": {
-    "n1": 1.0,
-    "n3": 1.47,
-    "n2m": 1.48
+    "n1": 1.01,
+    "n3": 1.01,
+    "n2m": 1.05
   },
   "geometry": {
-    "a": 2.0e-6,
-    "b": 1.0e-6,
+    "a": 2.22e-6,
+    "b": 1.11e-6,
     "profile_type": "homogeneous"
   },
   "discretization": {
@@ -29,9 +29,9 @@
     "Ny": 4
   },
   "sweep": {
-    "v_start": 1.0,
-    "v_end": 5.0,
-    "v_step": 0.5
+    "v_start": 0.4,
+    "v_end": 3.4,
+    "v_step": 0.2
   },
   "solver": {
     "include_scalar_contrast": true,
@@ -40,5 +40,5 @@
     "boundary_quadrature_model": "gauss2",
     "boundary_subdivisions": 2
   },
-  "notes": "Caso estruturado para a figura 2. Os parametros geometricos/numericos ainda sao provisórios e devem ser confirmados contra o artigo ou as referencias comparativas."
+  "notes": "Caso calibrado a partir da propria figura 2 do artigo: n1=n3=1.01, n2=1.05 e a=2b. A validacao quantitativa contra curvas externas continua dependente de digitizacao ou referencia numerica."
 }

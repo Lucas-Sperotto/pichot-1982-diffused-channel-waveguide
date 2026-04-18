@@ -16,8 +16,8 @@
   },
   "materials": {
     "n1": 1.0,
-    "n3": 1.47,
-    "n2m": 1.4701
+    "n3": 1.44,
+    "n2m": 1.47
   },
   "geometry": {
     "a": 2.22e-6,
@@ -29,9 +29,9 @@
     "Ny": 5
   },
   "sweep": {
-    "v_start": 1.0,
-    "v_end": 5.0,
-    "v_step": 0.5
+    "v_start": 0.8,
+    "v_end": 3.4,
+    "v_step": 0.2
   },
   "solver": {
     "include_scalar_contrast": true,
@@ -40,5 +40,5 @@
     "boundary_quadrature_model": "gauss2",
     "boundary_subdivisions": 2
   },
-  "notes": "Curva B uniforme para a figura 6. O n2m aqui e provisório e foi mantido ligeiramente acima de n3 apenas para deixar o pipeline executável enquanto a calibracao final nao e confirmada."
+  "notes": "Curva B uniforme da figura 6 com indice medio n2=1.47, conforme indicado na propria figura do artigo."
 }

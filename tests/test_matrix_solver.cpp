@@ -225,6 +225,32 @@ void test_beta_search_reduces_determinant_residual() {
             "A busca modal deveria melhorar ou igualar o residual do extremo direito.");
 }
 
+void test_mode_solution_returns_finite_coefficients_and_residual() {
+    const Waveguide wg = make_small_parabolic_waveguide();
+    const double beta_min = wg.get_k0() * wg.get_params().n3;
+    const double beta_max = wg.get_k0() * wg.get_params().n2m;
+
+    double beta_candidate = find_beta_root(wg, beta_min, beta_max);
+    beta_candidate = refine_beta_with_modal_residual(beta_candidate, beta_min, beta_max, wg);
+    const ModeSolution solution = solve_mode_at_beta(beta_candidate, wg);
+
+    require(solution.beta > beta_min && solution.beta < beta_max,
+            "A solução modal deveria manter beta no intervalo guiado.");
+    require(std::isfinite(solution.determinant_magnitude),
+            "O determinante associado à solução modal deveria ser finito.");
+    require(std::isfinite(solution.modal_residual),
+            "O residual modal deveria ser finito.");
+    require(solution.modal_residual >= 0.0, "O residual modal não deveria ser negativo.");
+    require(solution.coefficients.size() == 2 * wg.get_cells().size(),
+            "O vetor modal deveria ter um coeficiente por componente e por célula.");
+
+    double max_amplitude = 0.0;
+    for (const Complex& coefficient : solution.coefficients) {
+        max_amplitude = std::max(max_amplitude, std::abs(coefficient));
+    }
+    require(max_amplitude > 0.0, "A solução modal não deveria ser o vetor nulo.");
+}
+
 } // namespace
 
 int main() {
@@ -235,6 +261,7 @@ int main() {
     test_boundary_distribution_changes_homogeneous_operator();
     test_boundary_quadrature_models_are_distinct();
     test_beta_search_reduces_determinant_residual();
+    test_mode_solution_returns_finite_coefficients_and_residual();
     std::cout << "Matrix solver prototype checks passed." << std::endl;
     return 0;
 }

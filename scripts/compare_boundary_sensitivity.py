@@ -88,10 +88,11 @@ def main():
                         "Ny": ny,
                         "boundary_model": model_name,
                         "boundary_subdivisions": subdivisions,
-                        "V_param": result["V_param"],
+                        "article_x_param": result["article_x_param"],
                         "beta": result["beta"],
-                        "B_norm": result["B_norm"],
+                        "normalized_beta": result["normalized_beta"],
                         "det_abs": result["det_abs"],
+                        "modal_residual": result["modal_residual"],
                     }
                 )
                 shutil.copytree(
@@ -112,10 +113,11 @@ def main():
             "Ny",
             "boundary_model",
             "boundary_subdivisions",
-            "V_param",
+            "article_x_param",
             "beta",
-            "B_norm",
+            "normalized_beta",
             "det_abs",
+            "modal_residual",
         ]
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()

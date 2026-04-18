@@ -1,131 +1,104 @@
-# 08. Auditoria do repositório para preparação das figuras 2 a 6
+# 08. Auditoria do repositório para as figuras 2 a 6
 
 Esta auditoria complementa `docs/06_auditoria_inicial_do_repositorio.md`.
 
-O objetivo aqui é responder a uma pergunta prática: o repositório já está organizado para gerar, de forma reproduzível, os CSVs-base das figuras 2 a 6?
+O objetivo agora não é mais perguntar apenas se o repositório está “organizado”, e sim se ele já está produzindo artefatos mais próximos do conteúdo efetivo das figuras 2 a 6.
 
-## 1. Conclusão executiva
+## 1. Veredito executivo
 
-Sim, do ponto de vista de organização de entradas, saídas e automação, o repositório já está preparado para essa etapa.
+O repositório evoluiu de “infraestrutura preparada” para “infraestrutura operacional com parâmetros calibrados e campo reconstruído”.
 
-O que foi consolidado:
+Em termos práticos, isso significa que:
 
-- coleção dedicada de casos em `data/input/figures/`;
-- manifest explícito em `data/input/figures/manifest_figures_2_to_6.csv`;
-- diretórios de saída por figura e por caso em `out/figures/<figure_id>/<case_id>/`;
-- separação entre CSV canônico do estudo e `results.csv` de compatibilidade;
-- automação em lote por `scripts/generate_figures_2_to_6_csvs.sh`;
-- cobertura de sanidade do pipeline por `tests/smoke_figures_csv_generation.sh`.
+- as figuras 2, 3, 4 e 6 já usam parâmetros lidos das próprias imagens do artigo;
+- a abcissa das curvas passou a seguir a normalização mostrada nas figuras;
+- a figura 5 deixou de ser apenas uma malha de amostragem e passou a gerar um mapa de campo;
+- o solver agora registra um residual modal associado ao vetor quase-nulo do sistema.
 
-Portanto, a preparação de I/O deixou de ser o gargalo principal.
+O que ainda falta continua sendo maturidade numérica e validação científica fina, não organização básica.
 
 ## 2. Auditoria das entradas
 
-### 2.1 Coleção de casos
+### 2.1 Coleção das figuras
 
-As figuras 2 a 6 agora são representadas por arquivos JSON específicos em `data/input/figures/`.
+As figuras 2 a 6 continuam centralizadas em `data/input/figures/`.
 
-Cada caso carrega:
+O ganho desta etapa é que os casos deixaram de ser apenas placeholders aproximados e passaram a refletir os parâmetros que aparecem nas próprias figuras:
 
-- identificação do caso;
-- referência ao trecho do artigo;
-- tipo de estudo;
-- parâmetros geométricos e materiais;
-- discretização;
-- configuração do solver;
-- metadados de saída;
-- notas de maturidade.
+- figura 2: `n1 = n3 = 1.01`, `n2 = 1.05`, `a = 2b`;
+- figura 3: `n1 = 1.0`, `n2 = 1.5`, `n3 = 1.43`, `a = b`;
+- figura 4: `n1 = 1.0`, `n3 = 1.44`, `n2m = 1.50`, `\bar{n}_2 = 1.48`, `a = 2b`;
+- figura 5: `lambda0 = 0.6328 um`, `beta/k0 = 1.4447`, `a = 2.22 um`, `a = 2b`, `n1 = 1.0`, `n3 = 1.44`, `n2m = 1.5`;
+- figura 6: `n1 = 1.0`, `n3 = 1.44`, `n2m = 1.50`, `\bar{n}_2 = 1.47`, `a = 2b`.
 
 ### 2.2 Manifest
 
-O arquivo `data/input/figures/manifest_figures_2_to_6.csv` passou a funcionar como índice operacional da coleção.
+O arquivo `data/input/figures/manifest_figures_2_to_6.csv` segue sendo a referência operacional do lote.
 
-Ele registra, por linha:
-
-- `figure_id`;
-- `case_id`;
-- `case_file`;
-- `study_kind`;
-- `curve_id`;
-- `canonical_csv_name`;
-- `status`.
-
-Isso elimina a duplicação frágil de listas de casos dentro do script em lote e torna a coleção auditável.
+Agora ele também registra, por status, que os casos foram calibrados a partir do próprio artigo e que a figura 5 passou para reconstrução de campo.
 
 ## 3. Auditoria das saídas
 
-### 3.1 Regra de organização
+### 3.1 Curvas de dispersão
 
-Para os casos da família `figures`, a convenção de saída é:
+As figuras 2, 3, 4 e 6 continuam produzindo `dispersion_curve.csv`, mas com uma diferença importante:
 
-`out/figures/<figure_id>/<case_id>/`
+- a coluna horizontal agora representa a abcissa normalizada do artigo;
+- a saída inclui `beta_over_k0`, `normalized_beta`, `det_abs` e `modal_residual`.
 
-Dentro de cada diretório, a execução passa a deixar:
+Com isso, a curva deixa de ser apenas uma varredura interna do protótipo e passa a conversar de forma mais direta com os eixos publicados.
 
-- `input_snapshot.json`;
-- `run_summary.txt`;
-- `output_manifest.json`;
-- `profile_samples.csv`;
-- o CSV canônico do estudo;
-- `results.csv` como compatibilidade legada.
+### 3.2 Mapa de campo da figura 5
 
-No caso da figura 5, também aparece `field_map_status.txt`.
+O caso da figura 5 passou a gerar:
 
-### 3.2 Manifest de saída
+- `field_map.csv`;
+- `field_sampling_grid.csv`;
+- `mode_coefficients.csv`;
+- `field_map_status.txt`.
 
-O `output_manifest.json` agora registra:
+O `field_map.csv` já contém valores do campo reconstruído por componente solicitado, além de `beta`, `beta_over_k0` e `modal_residual`.
 
-- identificação do caso;
-- tipo de estudo;
-- família de saída;
-- `figure_id`;
-- `curve_id`;
-- nome do CSV canônico;
-- caminhos resolvidos dos arquivos principais;
-- status do artefato gerado.
+## 4. Auditoria do solver
 
-Esse arquivo melhora a rastreabilidade entre entrada, execução e pós-processamento.
+### 4.1 O que melhorou
 
-## 4. Auditoria dos scripts
+- a busca ainda usa o operador discretizado atual, mas a solução modal não fica mais resumida ao determinante;
+- o código agora estima um vetor quase-nulo do sistema por menor singularidade do operador discretizado;
+- isso permite medir um residual modal e reconstruir um campo a partir de coeficientes por célula.
 
-### 4.1 Execução isolada
+### 4.2 O que continua limitado
 
-`scripts/run_case.sh` continua sendo a interface para um caso individual.
+- a formulação vetorial completa do artigo ainda não está fechada;
+- a busca modal ainda não é um resolvedor rigoroso dos zeros exatos de $\det(A)$;
+- o termo de fronteira ainda usa uma aproximação auditável por segmentos;
+- a seleção modal para distinguir modos próximos ao corte ainda merece revisão mais forte.
 
-Quando o caso pertence à família `figures`, o script agora resolve automaticamente o diretório padrão de saída para a árvore `out/figures/...`, sem depender de um caminho manual.
+## 5. Auditoria dos testes e scripts
 
-### 4.2 Execução em lote
+### 5.1 Scripts
 
-`scripts/generate_figures_2_to_6_csvs.sh` agora consome diretamente o manifest das figuras 2 a 6.
+`scripts/run_case.sh` e `scripts/generate_figures_2_to_6_csvs.sh` continuam sendo as interfaces principais.
 
-Com isso, o script:
+A diferença é que o lote agora produz artefatos mais ricos sem mudar o contrato operacional do usuário.
 
-- deixa de repetir uma lista hard-coded de casos;
-- falha cedo se um arquivo listado no manifest não existir;
-- gera um índice de execução `figures_2_to_6_index.csv` com o status da geração.
+### 5.2 Testes
 
-## 5. Achados desta auditoria
+O repositório passou a validar explicitamente:
 
-### 5.1 Pontos fortes
+- o novo cabeçalho das curvas com a abcissa do artigo;
+- a geração do `field_map.csv`;
+- o status reconstruído da figura 5;
+- a existência de um vetor modal finito e de residual modal finito.
 
-- a coleção das figuras 2 a 6 já está separada do restante dos casos protótipos;
-- a organização de saída está coerente com o objetivo de reprodução figura a figura;
-- já é possível gerar CSVs canônicos em lote para as figuras 2, 3, 4 e 6;
-- a figura 5 já possui um artefato reproduzível de preparação de grade.
+## 6. Conclusão desta auditoria
 
-### 5.2 Limites ainda presentes
+Depois desta revisão, o repositório pode ser descrito assim:
 
-- o solver segue prototípico e ainda não fecha a formulação vetorial completa do artigo;
-- a figura 5 ainda não produz campo físico reconstruído;
-- as figuras 2, 3, 4 e 6 ainda carecem de calibração/validação quantitativa;
-- a sensibilidade à malha ainda é um risco técnico real.
+- organizado para reprodução figura a figura;
+- calibrado com parâmetros retirados das próprias figuras do artigo;
+- capaz de gerar curvas com a normalização correta de eixos;
+- capaz de gerar um mapa de campo para a figura 5;
+- ainda dependente de validação quantitativa e de refinamento científico do solver.
 
-## 6. Veredito
-
-Depois desta revisão, a situação do repositório é a seguinte:
-
-- preparado para gerar os CSVs-base das figuras 2 a 6;
-- preparado para organizar as saídas por figura e por curva;
-- ainda não pronto para declarar reprodução científica validada dessas figuras.
-
-Em outras palavras, a infraestrutura está pronta; a maturidade numérica ainda não.
+Em resumo: já não estamos apenas “preparando CSVs”; agora estamos gerando artefatos numericamente interpretáveis. O que resta é reduzir a distância entre esses artefatos e a solução vetorial final do artigo.

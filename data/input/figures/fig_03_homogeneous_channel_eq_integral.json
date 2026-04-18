@@ -16,12 +16,12 @@
   },
   "materials": {
     "n1": 1.0,
-    "n3": 1.47,
-    "n2m": 1.48
+    "n3": 1.43,
+    "n2m": 1.5
   },
   "geometry": {
     "a": 2.22e-6,
-    "b": 1.11e-6,
+    "b": 2.22e-6,
     "profile_type": "homogeneous"
   },
   "discretization": {
@@ -29,9 +29,9 @@
     "Ny": 4
   },
   "sweep": {
-    "v_start": 1.0,
-    "v_end": 5.0,
-    "v_step": 0.5
+    "v_start": 0.8,
+    "v_end": 3.6,
+    "v_step": 0.2
   },
   "solver": {
     "include_scalar_contrast": true,
@@ -40,5 +40,5 @@
     "boundary_quadrature_model": "gauss2",
     "boundary_subdivisions": 2
   },
-  "notes": "Caso estruturado para a figura 3. O alvo aqui e a curva produzida pelo prototipo atual; a calibracao fisica fina contra a figura original continua pendente."
+  "notes": "Caso calibrado a partir da figura 3 do artigo: n1=1.0, n2=1.5, n3=1.43 e a=b. A curva ainda precisa de comparacao quantitativa externa para ser considerada validada."
 }
