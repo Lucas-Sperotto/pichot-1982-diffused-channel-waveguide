@@ -1,0 +1,44 @@
+{
+  "case_id": "fig_04_curve_A_diffused_1d_eq_integral",
+  "reference": {
+    "article_section": "3.3.1",
+    "article_figure": "Fig. 4",
+    "target_mode": "E^x_11"
+  },
+  "study": {
+    "kind": "dispersion_curve"
+  },
+  "output": {
+    "family": "figures",
+    "figure_id": "fig_04",
+    "curve_id": "curve_A_diffused_1d",
+    "canonical_csv_name": "dispersion_curve.csv"
+  },
+  "materials": {
+    "n1": 1.0,
+    "n3": 1.47,
+    "n2m": 1.49
+  },
+  "geometry": {
+    "a": 2.22e-6,
+    "b": 1.11e-6,
+    "profile_type": "parabolic_1d"
+  },
+  "discretization": {
+    "Nx": 10,
+    "Ny": 5
+  },
+  "sweep": {
+    "v_start": 1.0,
+    "v_end": 5.0,
+    "v_step": 0.5
+  },
+  "solver": {
+    "include_scalar_contrast": true,
+    "include_regular_gradient": true,
+    "include_boundary_distribution": true,
+    "boundary_quadrature_model": "gauss2",
+    "boundary_subdivisions": 2
+  },
+  "notes": "Curva A da figura 4: guia difundido 1-D parabólico. Este e o caso mais maduro da colecao atual."
+}

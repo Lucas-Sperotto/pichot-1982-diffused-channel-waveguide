@@ -1,0 +1,44 @@
+{
+  "case_id": "fig_02_homogeneous_rectangular_eq_integral",
+  "reference": {
+    "article_section": "3.1",
+    "article_figure": "Fig. 2",
+    "target_mode": "E^y_11"
+  },
+  "study": {
+    "kind": "dispersion_curve"
+  },
+  "output": {
+    "family": "figures",
+    "figure_id": "fig_02",
+    "curve_id": "eq_integral",
+    "canonical_csv_name": "dispersion_curve.csv"
+  },
+  "materials": {
+    "n1": 1.0,
+    "n3": 1.47,
+    "n2m": 1.48
+  },
+  "geometry": {
+    "a": 2.0e-6,
+    "b": 1.0e-6,
+    "profile_type": "homogeneous"
+  },
+  "discretization": {
+    "Nx": 8,
+    "Ny": 4
+  },
+  "sweep": {
+    "v_start": 1.0,
+    "v_end": 5.0,
+    "v_step": 0.5
+  },
+  "solver": {
+    "include_scalar_contrast": true,
+    "include_regular_gradient": true,
+    "include_boundary_distribution": true,
+    "boundary_quadrature_model": "gauss2",
+    "boundary_subdivisions": 2
+  },
+  "notes": "Caso estruturado para a figura 2. Os parametros geometricos/numericos ainda sao provisórios e devem ser confirmados contra o artigo ou as referencias comparativas."
+}

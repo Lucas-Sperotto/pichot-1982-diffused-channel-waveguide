@@ -143,9 +143,31 @@ BoundaryQuadratureModel parse_boundary_quadrature_model(const std::string& value
     throw std::runtime_error("Modelo de quadratura de fronteira desconhecido: " + value);
 }
 
+StudyKind parse_study_kind(const std::string& value) {
+    if (value == "dispersion_curve") {
+        return StudyKind::DISPERSION_CURVE;
+    }
+    if (value == "field_map_preparation") {
+        return StudyKind::FIELD_MAP_PREPARATION;
+    }
+
+    throw std::runtime_error("Tipo de estudo desconhecido: " + value);
+}
+
 void validate_case(const SimulationCase& sim_case) {
     if (sim_case.case_id.empty()) {
         throw std::runtime_error("case_id não pode ser vazio.");
+    }
+    if (sim_case.output.canonical_csv_name.empty()) {
+        throw std::runtime_error("output.canonical_csv_name não pode ser vazio.");
+    }
+    if (sim_case.output.family == "figures") {
+        if (sim_case.output.figure_id.empty()) {
+            throw std::runtime_error("Casos da família figures exigem output.figure_id.");
+        }
+        if (sim_case.output.curve_id.empty()) {
+            throw std::runtime_error("Casos da família figures exigem output.curve_id.");
+        }
     }
     if (sim_case.waveguide.a <= 0.0 || sim_case.waveguide.b <= 0.0) {
         throw std::runtime_error("As dimensões geométricas a e b devem ser positivas.");
@@ -163,6 +185,14 @@ void validate_case(const SimulationCase& sim_case) {
     if (sim_case.assembly_options.boundary_subdivisions == 0) {
         throw std::runtime_error("boundary_subdivisions deve ser positivo.");
     }
+    if (sim_case.study_kind == StudyKind::FIELD_MAP_PREPARATION) {
+        if (sim_case.field_map.lambda0 <= 0.0) {
+            throw std::runtime_error("field_map.lambda0 deve ser positivo.");
+        }
+        if (sim_case.field_map.sample_nx == 0 || sim_case.field_map.sample_ny == 0) {
+            throw std::runtime_error("field_map.sample_nx e field_map.sample_ny devem ser positivos.");
+        }
+    }
 }
 
 void write_summary_file(const SimulationCase& sim_case,
@@ -179,6 +209,11 @@ void write_summary_file(const SimulationCase& sim_case,
     summary << "article_figure: " << sim_case.article_figure << "\n";
     summary << "target_mode: " << sim_case.target_mode << "\n";
     summary << "profile_type: " << profile_type_to_string(sim_case.waveguide.profile_type) << "\n";
+    summary << "study_kind: " << study_kind_to_string(sim_case.study_kind) << "\n";
+    summary << "output_family: " << sim_case.output.family << "\n";
+    summary << "figure_id: " << sim_case.output.figure_id << "\n";
+    summary << "curve_id: " << sim_case.output.curve_id << "\n";
+    summary << "canonical_csv_name: " << sim_case.output.canonical_csv_name << "\n";
     summary << "Nx: " << sim_case.discretization.Nx << "\n";
     summary << "Ny: " << sim_case.discretization.Ny << "\n";
     summary << "V_range: [" << sim_case.sweep.v_start << ", " << sim_case.sweep.v_end
@@ -192,6 +227,12 @@ void write_summary_file(const SimulationCase& sim_case,
     summary << "boundary_quadrature_model: "
             << boundary_quadrature_model_to_cstr(sim_case.assembly_options.boundary_quadrature_model) << "\n";
     summary << "boundary_subdivisions: " << sim_case.assembly_options.boundary_subdivisions << "\n";
+    if (sim_case.study_kind == StudyKind::FIELD_MAP_PREPARATION) {
+        summary << "field_map_lambda0: " << sim_case.field_map.lambda0 << "\n";
+        summary << "field_map_sample_nx: " << sim_case.field_map.sample_nx << "\n";
+        summary << "field_map_sample_ny: " << sim_case.field_map.sample_ny << "\n";
+        summary << "field_map_component: " << sim_case.field_map.component << "\n";
+    }
     summary << "notes: " << sim_case.notes << "\n";
     summary << "solver_status: prototype_boundary_segments_operator\n";
     summary << "limitations: G^S e G^NS escalares ja estao implementadas no regime guiado com y >= 0 e y' >= 0; a montagem atual usa o termo (k^2-k3^2)G, a parte volumetrica regular de eps*grad(1/eps) multiplicando grad'G e uma aproximacao explicita do termo de fronteira por segmentos da borda da malha; a formulacao vetorial completa, um tratamento mais rigoroso da singularidade/quadra da fronteira e a busca rigorosa por det(A)=0 ainda permanecem pendentes.\n";
@@ -207,6 +248,9 @@ SimulationCase load_case_from_json(const std::string& path) {
     const std::string discretization = extract_object(text, "discretization");
     const std::string sweep = extract_object(text, "sweep");
     const std::string solver = extract_optional_object(text, "solver");
+    const std::string study = extract_optional_object(text, "study");
+    const std::string output = extract_optional_object(text, "output");
+    const std::string field_map = extract_optional_object(text, "field_map");
 
     SimulationCase sim_case;
     sim_case.case_id = extract_string(text, "case_id");
@@ -214,6 +258,10 @@ SimulationCase load_case_from_json(const std::string& path) {
     sim_case.article_figure = extract_string(reference, "article_figure");
     sim_case.target_mode = extract_string(reference, "target_mode");
     sim_case.notes = extract_string(text, "notes");
+
+    if (!study.empty() && has_key(study, "kind")) {
+        sim_case.study_kind = parse_study_kind(extract_string(study, "kind"));
+    }
 
     sim_case.waveguide.n1 = extract_double(materials, "n1");
     sim_case.waveguide.n3 = extract_double(materials, "n3");
@@ -249,6 +297,36 @@ SimulationCase load_case_from_json(const std::string& path) {
         }
     }
 
+    if (!output.empty()) {
+        if (has_key(output, "family")) {
+            sim_case.output.family = extract_string(output, "family");
+        }
+        if (has_key(output, "figure_id")) {
+            sim_case.output.figure_id = extract_string(output, "figure_id");
+        }
+        if (has_key(output, "curve_id")) {
+            sim_case.output.curve_id = extract_string(output, "curve_id");
+        }
+        if (has_key(output, "canonical_csv_name")) {
+            sim_case.output.canonical_csv_name = extract_string(output, "canonical_csv_name");
+        }
+    }
+
+    if (!field_map.empty()) {
+        if (has_key(field_map, "lambda0")) {
+            sim_case.field_map.lambda0 = extract_double(field_map, "lambda0");
+        }
+        if (has_key(field_map, "sample_nx")) {
+            sim_case.field_map.sample_nx = extract_size(field_map, "sample_nx");
+        }
+        if (has_key(field_map, "sample_ny")) {
+            sim_case.field_map.sample_ny = extract_size(field_map, "sample_ny");
+        }
+        if (has_key(field_map, "component")) {
+            sim_case.field_map.component = extract_string(field_map, "component");
+        }
+    }
+
     validate_case(sim_case);
     return sim_case;
 }
@@ -264,6 +342,17 @@ std::string profile_type_to_string(ProfileType profile_type) {
     }
 
     throw std::runtime_error("ProfileType inválido.");
+}
+
+std::string study_kind_to_string(StudyKind study_kind) {
+    switch (study_kind) {
+        case StudyKind::DISPERSION_CURVE:
+            return "dispersion_curve";
+        case StudyKind::FIELD_MAP_PREPARATION:
+            return "field_map_preparation";
+    }
+
+    throw std::runtime_error("StudyKind inválido.");
 }
 
 void prepare_case_output(const SimulationCase& sim_case,

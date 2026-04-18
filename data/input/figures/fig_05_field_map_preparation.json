@@ -1,0 +1,50 @@
+{
+  "case_id": "fig_05_field_map_preparation",
+  "reference": {
+    "article_section": "3.3.1",
+    "article_figure": "Fig. 5",
+    "target_mode": "E^y_21"
+  },
+  "study": {
+    "kind": "field_map_preparation"
+  },
+  "output": {
+    "family": "figures",
+    "figure_id": "fig_05",
+    "curve_id": "field_map_preparation",
+    "canonical_csv_name": "field_sampling_grid.csv"
+  },
+  "materials": {
+    "n1": 1.0,
+    "n3": 1.47,
+    "n2m": 1.49
+  },
+  "geometry": {
+    "a": 2.22e-6,
+    "b": 1.11e-6,
+    "profile_type": "parabolic_1d"
+  },
+  "discretization": {
+    "Nx": 10,
+    "Ny": 5
+  },
+  "sweep": {
+    "v_start": 3.5,
+    "v_end": 3.5,
+    "v_step": 1.0
+  },
+  "field_map": {
+    "lambda0": 6.328e-7,
+    "sample_nx": 41,
+    "sample_ny": 21,
+    "component": "Ey"
+  },
+  "solver": {
+    "include_scalar_contrast": true,
+    "include_regular_gradient": true,
+    "include_boundary_distribution": true,
+    "boundary_quadrature_model": "gauss2",
+    "boundary_subdivisions": 2
+  },
+  "notes": "Preparacao da figura 5. O CSV gerado nesta etapa descreve a grade de amostragem e o estado pendente da reconstrucao de campo; os valores de |Ey| ainda dependem da implementacao vetorial completa."
+}

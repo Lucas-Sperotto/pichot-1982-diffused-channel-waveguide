@@ -26,8 +26,30 @@ if [[ $# -ge 2 ]]; then
         OUTPUT_DIR="${ROOT_DIR}/${OUTPUT_DIR}"
     fi
 else
-    CASE_NAME="$(basename "${CASE_FILE}" .json)"
-    OUTPUT_DIR="${ROOT_DIR}/out/${CASE_NAME}"
+    OUTPUT_DIR="$(
+        python3 -c '
+import json
+import sys
+from pathlib import Path
+
+case_file = Path(sys.argv[1])
+root_dir = Path(sys.argv[2])
+with case_file.open(encoding="utf-8") as f:
+    data = json.load(f)
+
+case_id = data["case_id"]
+output = data.get("output", {})
+family = output.get("family", "cases")
+figure_id = output.get("figure_id", "")
+
+if family == "figures" and figure_id:
+    path = root_dir / "out" / "figures" / figure_id / case_id
+else:
+    path = root_dir / "out" / case_id
+
+print(path)
+' "${CASE_FILE}" "${ROOT_DIR}"
+    )"
 fi
 
 mkdir -p "${OUTPUT_DIR}"
