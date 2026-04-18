@@ -58,7 +58,7 @@ Figura 3 — Relação de dispersão de um guia de canal homogêneo. Comparaçã
 As expressões documentais dos eixos da figura são:
 
 $$
-X = \left(\frac{2b}{\lambda_0}\right)\left(n_2^2 - n_1^2\right)^{1/2},
+X = \left(\frac{2b}{\lambda_0}\right)\left(n_2^2 - n_3^2\right)^{1/2},
 $$
 
 $$
@@ -106,7 +106,7 @@ Parâmetros documentados:
 As expressões documentais dos eixos da figura são:
 
 $$
-X = \left(\frac{2b}{\lambda_0}\right)\left(\bar{n}_2^2 - n_1^2\right)^{1/2},
+X = \left(\frac{2b}{\lambda_0}\right)\left(\bar{n}_2^2 - n_3^2\right)^{1/2},
 $$
 
 $$
@@ -204,7 +204,7 @@ $$
 As expressões documentais dos eixos da figura são:
 
 $$
-X = \left(\frac{2b}{\lambda_0}\right)\left(\bar{n}_2^2 - n_1^2\right)^{1/2},
+X = \left(\frac{2b}{\lambda_0}\right)\left(\bar{n}_2^2 - n_3^2\right)^{1/2},
 $$
 
 $$
