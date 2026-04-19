@@ -1,0 +1,77 @@
+{
+  "figure_id": "fig_02",
+  "references": [
+    {
+      "reference_id": "integral_equation",
+      "label": "Integral Equation",
+      "source_kind": "digitized_article",
+      "csv_path": "data/reference/fig_02_integral_equation_digitized.csv",
+      "x_column": "article_x_param",
+      "y_column": "normalized_beta",
+      "plot_order": 1,
+      "line_style": "--",
+      "line_width": 1.4,
+      "source_note": "Curva digitizada manualmente a partir de docs/img/fig_02.png."
+    },
+    {
+      "reference_id": "goell",
+      "label": "Goell",
+      "source_kind": "digitized_article",
+      "csv_path": "data/reference/fig_02_goell_digitized.csv",
+      "x_column": "article_x_param",
+      "y_column": "normalized_beta",
+      "plot_order": 2,
+      "line_style": ":",
+      "line_width": 1.2,
+      "source_note": "Curva digitizada manualmente a partir de docs/img/fig_02.png; o artigo indica excelente concordância com a curva integral."
+    },
+    {
+      "reference_id": "yeh_fem",
+      "label": "Yeh / Finite Element",
+      "source_kind": "digitized_article",
+      "csv_path": "data/reference/fig_02_yeh_fem_digitized.csv",
+      "x_column": "article_x_param",
+      "y_column": "normalized_beta",
+      "plot_order": 3,
+      "line_style": "-.",
+      "line_width": 1.2,
+      "source_note": "Curva FEM/Yeh digitizada manualmente a partir de docs/img/fig_02.png."
+    },
+    {
+      "reference_id": "effective_index",
+      "label": "Effective Index",
+      "source_kind": "digitized_article",
+      "csv_path": "data/reference/fig_02_effective_index_digitized.csv",
+      "x_column": "article_x_param",
+      "y_column": "normalized_beta",
+      "plot_order": 4,
+      "line_style": "--",
+      "line_width": 1.2,
+      "source_note": "Curva do método do índice efetivo digitizada manualmente a partir de docs/img/fig_02.png."
+    },
+    {
+      "reference_id": "marcatili_digitized",
+      "label": "Marcatili (Article)",
+      "source_kind": "digitized_article",
+      "csv_path": "data/reference/fig_02_marcatili_digitized.csv",
+      "x_column": "article_x_param",
+      "y_column": "normalized_beta",
+      "plot_order": 5,
+      "line_style": "-.",
+      "line_width": 1.2,
+      "source_note": "Curva de Marcatili digitizada manualmente a partir de docs/img/fig_02.png."
+    },
+    {
+      "reference_id": "marcatili_external",
+      "label": "Marcatili (External CSV)",
+      "source_kind": "external_csv",
+      "csv_path": "data/reference/fig_02_marcatili_external.csv",
+      "x_column": "article_x_param",
+      "y_column": "normalized_beta",
+      "plot_order": 6,
+      "line_style": ":",
+      "line_width": 1.2,
+      "source_note": "CSV gerado offline com /home/sperotto/marcatili-1969-rectangular-waveguide/build/bin/solve_single_guide no solver closed_form E_y11, usando n_core=1.05, n_cladding=1.01 e a=2b."
+    }
+  ]
+}

@@ -115,6 +115,14 @@ Nota editorial da Fase 3.1A:
 - cada execução do solver passa a salvar também `performance_summary.json`, com tempo de parede do solver e contadores de uso de `G_NS`, de seus ramos numéricos e das auto-interações regularizadas;
 - o benchmark reproduzível do lote das Figuras 2 a 6 passa a ser feito por `scripts/benchmark_figures_2_to_6.sh`.
 
+Nota editorial da Fase 3.3A:
+
+- a validação quantitativa da Figura 2 passa a ser guiada por `data/reference/fig_02_references_manifest.json`, em vez de depender de uma única referência hard-coded;
+- a Figura 2 agora compara explicitamente as curvas `integral_equation`, `goell`, `yeh_fem`, `effective_index`, `marcatili_digitized` e `marcatili_external`;
+- Marcatili passa a ter dupla rastreabilidade: uma curva digitizada do artigo e uma curva importada como CSV externo;
+- o caso da Figura 2 passa a gerar também `validation_manifest.json` e `fig_02_validation_overlay.png`;
+- a convergência de malha reproduzível desta etapa vale apenas para a Figura 2, com baseline interno na malha mais fina.
+
 ## 3.2. Guia de canal homogêneo
 
 Mostra-se na Fig. 3 a comparação entre nossos resultados e aqueles obtidos por Yeh, Marcatili e pelo método do índice efetivo para o guia de canal homogêneo no modo $E^{y}_{11}$. Observa-se boa concordância entre a equação integral vetorial e os resultados de Yeh.

@@ -13,6 +13,15 @@ O objetivo é manter, na raiz do repositório, uma visão curta do que ainda pre
 - [OK] Gerar uma validação reproduzível inicial da Figura 2 contra a curva "integral equation" digitizada do artigo.
   Resultado desta etapa: `scripts/run_case.sh` passou a chamar `scripts/postprocess_case.py`, que gera `fig_02_integral_equation_comparison.csv`, `fig_02_integral_equation_metrics.json` e `fig_02_integral_equation_overlay.png` a partir de `data/reference/fig_02_integral_equation_digitized.csv`.
 
+## 1.1. Leitura executiva da Fase 3.3A
+
+- [OK] Fechar o conjunto de referências externas da Figura 2.
+  Resultado desta etapa: `data/reference/fig_02_references_manifest.json` agora lista as curvas da figura em schema canônico, incluindo Goell, Yeh/FEM, effective index, Marcatili digitizado e Marcatili externo importado por CSV.
+- [OK] Generalizar a validação quantitativa da Figura 2 para operar por manifesto.
+  Resultado desta etapa: `scripts/postprocess_case.py` passou a gerar `comparison.csv` e `metrics.json` por referência, `validation_manifest.json` e um overlay consolidado multi-referência para a Figura 2.
+- [OK] Gerar um estudo reproduzível de convergência de malha apenas para a Figura 2.
+  Resultado desta etapa: `scripts/run_fig02_mesh_convergence.sh` e `scripts/postprocess_fig02_mesh_convergence.py` passaram a produzir um resumo quantitativo por malha e um overlay das curvas calculadas.
+
 ## 2. Pendências científico-numéricas para a Fase 2 em diante
 
 - [OK] Medir o custo do lote completo das Figuras 2 a 6 e registrar instrumentação de performance por caso.
@@ -24,8 +33,8 @@ O objetivo é manter, na raiz do repositório, uma visão curta do que ainda pre
 - [OK] Abrir uma trilha documental explícita entre as equações do artigo e os passos do código atual.
   Resultado desta revisão: `docs/12_trilha_equacoes_para_codigo.md` agora descreve a discretização de $\mathcal{D}_2$, as funções-base step, a montagem de `A`, a avaliação de `G = G_S + G_NS` e o critério operacional hoje usado para localizar $\beta$.
 - [ ] Melhorar a regularização e a quadratura da contribuição de fronteira.
-- [ ] Medir convergência de malha para as figuras 2, 3, 4 e 6 antes de declarar as curvas como reproduções finais.
-- [ ] Comparar quantitativamente as curvas geradas com as demais referências externas digitalizadas ou tabuladas.
+- [ ] Estender a convergência de malha para as figuras 3, 4 e 6 antes de declarar as curvas como reproduções finais.
+- [ ] Estender a comparação quantitativa multi-referência das curvas para as figuras 3, 4 e 6.
 - [ ] Verificar se o campo reconstruído da Figura 5 representa fielmente o modo $E^y_{21}$, e não apenas um vetor quase-nulo no $\beta$ informado pelo artigo.
 
 ## 3. Pendências operacionais de manutenção

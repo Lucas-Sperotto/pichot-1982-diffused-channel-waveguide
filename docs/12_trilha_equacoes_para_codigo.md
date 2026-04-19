@@ -318,13 +318,14 @@ $$
 - calcula-se `normalized_beta`, `det_abs` e `modal_residual`;
 - grava-se `dispersion_curve.csv`.
 
-Para a Figura 2, a Fase 3A acrescenta ainda uma etapa de pós-processamento reproduzível:
+Para a Figura 2, a Fase 3A e a Fase 3.3A acrescentam uma etapa de pós-processamento reproduzível:
 
-- carrega-se `data/reference/fig_02_integral_equation_digitized.csv`;
-- interpola-se a referência digitizada na abcissa da simulação;
-- grava-se `fig_02_integral_equation_comparison.csv`;
-- grava-se `fig_02_integral_equation_metrics.json`;
-- gera-se `fig_02_integral_equation_overlay.png`.
+- carrega-se `data/reference/fig_02_references_manifest.json`;
+- para cada referência listada no manifesto, interpola-se a curva na abcissa da simulação;
+- grava-se um `comparison.csv` e um `metrics.json` por referência;
+- grava-se `validation_manifest.json` no diretório do caso;
+- gera-se `fig_02_validation_overlay.png` com todas as referências da figura;
+- preserva-se também `fig_02_integral_equation_overlay.png` como overlay legado da curva integral.
 
 Além disso, toda execução do solver passa a salvar também:
 
@@ -332,6 +333,8 @@ Além disso, toda execução do solver passa a salvar também:
 - `output_manifest.json`, agora apontando explicitamente para esse resumo de performance.
 
 Como as funções-base são do tipo step, o aumento de `Nx` e `Ny` é a forma direta de refinar a aproximação espacial. A conferência de que essa conversão de abcissa coincide exatamente com cada figura do artigo permanece parte da validação científica posterior.
+
+Na Fase 3.3A, esse refinamento passa a ser explorado explicitamente por `scripts/run_fig02_mesh_convergence.sh`, que usa a malha mais fina do conjunto executado como baseline interno para medir estabilização entre malhas na Figura 2.
 
 ### 12.8.2. Casos `field_map`
 

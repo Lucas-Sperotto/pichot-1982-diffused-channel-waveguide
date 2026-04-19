@@ -54,10 +54,14 @@ Esta é a fase atual do projeto. O foco é transformar os resultados do protóti
 **3.3. Validação Quantitativa das Curvas de Dispersão**
 - [OK] Digitalizar a curva "integral equation" da Figura 2 e armazená-la em `data/reference/`.
 - [OK] Gerar `comparison.csv`, `metrics.json` e `overlay.png` para a Figura 2 no fluxo padrão de execução.
-- [ ] Digitalizar as curvas de referência (Goell, Yeh, Marcatili) das imagens do artigo.
-- [ ] Armazenar os dados de referência em arquivos CSV (`data/reference/`).
-- [ ] Desenvolver scripts para gerar gráficos sobrepostos e calcular métricas de erro (ex: Erro Quadrático Médio).
-- [ ] Realizar estudos de convergência de malha (`Nx`, `Ny`) para garantir a precisão dos resultados.
+- [OK] Fechar a subfase 3.3A da Figura 2 com manifesto de referências externas.
+  Resultado desta etapa: `data/reference/fig_02_references_manifest.json` passou a listar as curvas `integral_equation`, `goell`, `yeh_fem`, `effective_index`, `marcatili_digitized` e `marcatili_external`, todas em schema canônico `article_x_param,normalized_beta`.
+- [OK] Generalizar o pós-processamento da Figura 2 para operar por manifesto e gerar comparações por referência.
+  Resultado desta etapa: `scripts/postprocess_case.py` deixou de depender de uma única curva hard-coded e passou a gerar um `comparison.csv` e um `metrics.json` por referência, além de `validation_manifest.json` e de um overlay consolidado multi-referência.
+- [OK] Realizar o primeiro estudo reproduzível de convergência de malha da Figura 2.
+  Resultado desta etapa: `scripts/run_fig02_mesh_convergence.sh` passou a executar a escada `(4,2)`, `(8,4)`, `(12,6)` e `(16,8)`, agregando métricas contra as referências externas e contra a malha mais fina em artefatos próprios de convergência.
+- [ ] Estender a mesma infraestrutura de referências externas para as Figuras 3, 4 e 6.
+- [ ] Decidir thresholds quantitativos de aceite para erro externo e estabilização entre malhas, se isso for desejado numa fase posterior.
 
 **3.4. Verificação da Identificação Modal (Figura 5)**
 - [ ] Inspecionar visualmente o mapa de campo reconstruído para confirmar a estrutura do modo $E^y_{21}$ (dois máximos em `x`, um em `y`).

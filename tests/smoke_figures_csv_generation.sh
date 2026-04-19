@@ -82,6 +82,13 @@ test -f "${FIG02_DIR}/performance_summary.json"
 test -f "${FIG02_DIR}/fig_02_integral_equation_comparison.csv"
 test -f "${FIG02_DIR}/fig_02_integral_equation_metrics.json"
 test -f "${FIG02_DIR}/fig_02_integral_equation_overlay.png"
+test -f "${FIG02_DIR}/fig_02_goell_comparison.csv"
+test -f "${FIG02_DIR}/fig_02_yeh_fem_comparison.csv"
+test -f "${FIG02_DIR}/fig_02_effective_index_comparison.csv"
+test -f "${FIG02_DIR}/fig_02_marcatili_digitized_comparison.csv"
+test -f "${FIG02_DIR}/fig_02_marcatili_external_comparison.csv"
+test -f "${FIG02_DIR}/fig_02_validation_overlay.png"
+test -f "${FIG02_DIR}/validation_manifest.json"
 test -f "${FIG02_DIR}/mode_coefficients.csv" || true
 test -f "${FIG05_DIR}/field_map.csv"
 test -f "${FIG05_DIR}/field_sampling_grid.csv"
@@ -98,6 +105,9 @@ rg -q "^case_id,article_figure,target_mode,article_x_param,lambda0,beta,beta_ove
 rg -q "^article_x_param,normalized_beta_simulation,normalized_beta_reference,absolute_error,squared_error$" \
     "${FIG02_DIR}/fig_02_integral_equation_comparison.csv"
 rg -q '"sample_count"' "${FIG02_DIR}/fig_02_integral_equation_metrics.json"
+rg -q '"reference_id": "effective_index"' "${FIG02_DIR}/validation_manifest.json"
+rg -q '"reference_id": "marcatili_external"' "${FIG02_DIR}/validation_manifest.json"
+rg -q '"validation_overlay_png"' "${FIG02_DIR}/validation_manifest.json"
 rg -q "^sample_id,x,y,refractive_index,k_squared,requested_component$" \
     "${FIG05_DIR}/field_sampling_grid.csv"
 rg -q "^sample_id,x,y,refractive_index,k_squared,requested_component,field_real,field_imag,field_abs,field_abs_normalized,beta,beta_over_k0,modal_residual$" \
